@@ -1,17 +1,6 @@
-"""
-Роутер аутентификации — регистрация, логин, refresh.
-
-Эндпоинты:
-  POST /api/auth/register        — регистрация
-  POST /api/auth/login           — вход (email + password)
-  POST /api/auth/refresh         — обновление access токена
-"""
-
 from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.dependencies.database import get_db
 from app.schemas.auth import (
     LoginRequest,
@@ -36,8 +25,6 @@ async def register(
     data: RegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Регистрация нового пользователя."""
-    # Проверяем что email не занят
     existing = await get_user_by_email(db, data.email)
     if existing:
         raise HTTPException(
@@ -45,7 +32,6 @@ async def register(
             detail="Email already registered",
         )
 
-    # Создаём пользователя
     user = await create_user(
         db,
         UserCreate(
@@ -55,7 +41,6 @@ async def register(
         ),
     )
 
-    # Возвращаем токены
     return create_token_pair(str(user.id))
 
 
@@ -64,7 +49,6 @@ async def login(
     data: LoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Вход по email + password."""
     user = await get_user_by_email(db, data.email)
     if not user or not user.hashed_password:
         raise HTTPException(
@@ -92,7 +76,6 @@ async def refresh(
     data: RefreshRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Обновить access токен по refresh токену."""
     payload = verify_refresh_token(data.refresh_token)
     if not payload:
         raise HTTPException(

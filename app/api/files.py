@@ -1,13 +1,3 @@
-"""
-Роутер файлов — загрузка/скачивание через S3/MinIO.
-
-Эндпоинты:
-  POST   /api/files/upload     — загрузить файл
-  GET    /api/files/{key}      — получить presigned URL
-  DELETE /api/files/{key}      — удалить файл
-  GET    /api/files            — список файлов
-"""
-
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query, status
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -16,7 +6,6 @@ from app.services.s3 import s3_client
 
 router = APIRouter()
 
-# Максимальный размер файла (50 MB)
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
@@ -25,12 +14,6 @@ async def upload_file(
     file: UploadFile = File(...),
     folder: str = Query("", description="Папка в bucket"),
 ):
-    """
-    Загрузить файл в S3/MinIO.
-
-    Возвращает ключ файла и presigned URL для доступа.
-    """
-    # Проверяем размер
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(
@@ -38,7 +21,6 @@ async def upload_file(
             detail=f"File too large. Max size: {MAX_FILE_SIZE // 1024 // 1024} MB",
         )
 
-    # Загружаем
     file_obj = BytesIO(contents)
     try:
         key = await s3_client.upload_file(
@@ -53,7 +35,6 @@ async def upload_file(
             detail=f"Upload failed: {str(e)}",
         )
 
-    # Генерируем URL
     url = await s3_client.generate_presigned_url(key)
 
     return {
@@ -70,12 +51,6 @@ async def get_file(
     key: str,
     download: bool = Query(False, description="Скачать файл напрямую"),
 ):
-    """
-    Получить файл — presigned URL или прямое скачивание.
-
-    - download=false (default) — возвращает presigned URL
-    - download=true — стримит файл напрямую
-    """
     if download:
         try:
             data = await s3_client.download_file(key)
@@ -104,7 +79,6 @@ async def get_file(
 
 @router.delete("/{key:path}")
 async def delete_file(key: str):
-    """Удалить файл из S3/MinIO."""
     try:
         await s3_client.delete_file(key)
         return {"ok": True, "message": f"File '{key}' deleted"}

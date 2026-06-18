@@ -1,13 +1,9 @@
-"""Pydantic схемы для User."""
-
 import uuid
 from datetime import datetime
-
 from pydantic import BaseModel, EmailStr
 
 
 class UserCreate(BaseModel):
-    """Создание пользователя (внутреннее, из сервиса)."""
     email: EmailStr
     hashed_password: str
     full_name: str = ""
@@ -15,7 +11,6 @@ class UserCreate(BaseModel):
 
 
 class UserRead(BaseModel):
-    """Ответ — данные пользователя (публичные)."""
     id: uuid.UUID
     email: str
     full_name: str
@@ -27,6 +22,5 @@ class UserRead(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    """Обновление профиля пользователя."""
     full_name: str | None = None
     avatar_url: str | None = None

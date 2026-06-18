@@ -1,10 +1,6 @@
 """
-FastAPI Hackathon Boilerplate — точка входа.
-
-Запуск:
   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-Или через Docker:
   docker-compose up
 """
 
@@ -51,10 +47,3 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_router)
-
-@app.get("/", tags=["Health"])
-async def root():
-    return {
-        "status": "ok",
-    }
-

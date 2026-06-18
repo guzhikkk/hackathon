@@ -1,38 +1,30 @@
-"""Pydantic схемы для аутентификации."""
-
-
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class RegisterRequest(BaseModel):
-    """Запрос на регистрацию."""
-    email: EmailStr
+    email: str
     password: str
     full_name: str = ""
 
 
 class LoginRequest(BaseModel):
-    """Запрос на вход."""
-    email: EmailStr
+    email: str
     password: str
 
 
 class TokenPair(BaseModel):
-    """Пара JWT токенов."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 
 class TokenPayload(BaseModel):
-    """Данные из JWT токена."""
-    sub: str  # user_id as string
+    sub: str
     exp: int
-    type: str  # "access" или "refresh"
+    type: str 
 
 
 class RefreshRequest(BaseModel):
-    """Запрос на обновление access токена."""
     refresh_token: str
 
 

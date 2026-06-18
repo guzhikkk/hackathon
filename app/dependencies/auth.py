@@ -25,7 +25,6 @@ from app.dependencies.database import get_db
 from app.models.user import User
 from app.services.auth import verify_access_token
 
-# Bearer scheme для Swagger UI
 security = HTTPBearer(auto_error=False)
 
 
@@ -35,10 +34,7 @@ async def get_current_user(
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    """
-    Извлечь текущего пользователя из JWT токена.
-    Кидает 401 если токен невалидный или пользователь не найден.
-    """
+
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,10 +79,6 @@ async def get_current_user_optional(
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User | None:
-    """
-    Опциональная аутентификация — вернуть None если нет токена.
-    Полезно для эндпоинтов с разным поведением для авторизованных/неавторизованных.
-    """
     if not credentials:
         return None
     try:
@@ -94,7 +86,5 @@ async def get_current_user_optional(
     except HTTPException:
         return None
 
-
-# Типовые алиасы для удобства
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]
