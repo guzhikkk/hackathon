@@ -19,10 +19,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # --- App ---
-    APP_NAME: str = "HackathonApp"
-    APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True
+
 
     # --- Database ---
     DATABASE_URL: str = "postgresql+asyncpg://hackathon:hackathon@localhost:5432/hackathon"

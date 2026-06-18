@@ -6,12 +6,12 @@
 
 | Модуль | Описание |
 |--------|----------|
-| **Auth** | JWT (access + refresh) |
+| **Auth** | JWT (access + refresh), регистрация, логин |
 | **Database** | PostgreSQL + async SQLAlchemy 2.0 + Alembic миграции |
 | **Files** | S3/MinIO — загрузка, скачивание, presigned URLs |
 | **CRUD** | Готовый User CRUD с пагинацией — копируй для новых моделей |
 | **Docker** | docker-compose: app + postgres + minio за одну команду |
-| **DX** | CORS, timing middleware, exception handlers, structured logging |
+| **DX** | CORS, exception handlers |
 
 ## 🚀 Быстрый старт
 
@@ -62,15 +62,13 @@ alembic upgrade head
 │   ├── dependencies/        # FastAPI Depends
 │   │   ├── auth.py          # get_current_user
 │   │   └── database.py      # get_db
-│   ├── middleware/           # Middleware
-│   │   └── timing.py        # X-Process-Time
 │   └── utils/               # Утилиты
-│       ├── exceptions.py    # Кастомные исключения
-│       └── logging.py       # Настройка логирования
+│       └── exceptions.py    # Кастомные исключения
 ├── alembic/                 # Миграции БД
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .env.example
+├── requirements.txt
 └── pyproject.toml
 ```
 
@@ -82,7 +80,6 @@ alembic upgrade head
 | POST | `/api/auth/register` | Регистрация |
 | POST | `/api/auth/login` | Вход (email + password) |
 | POST | `/api/auth/refresh` | Обновить access токен |
-| GET | `/api/auth/me` | Текущий пользователь |
 
 ### Users
 | Метод | URL | Описание |
@@ -101,6 +98,12 @@ alembic upgrade head
 | DELETE | `/api/files/{key}` | Удалить |
 | GET | `/api/files` | Список файлов |
 
+### Health
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | `/` | Quick health check |
+| GET | `/health` | Детальный health check |
+
 ## 🧩 Как добавить новый модуль (5 минут)
 
 ### 1. Модель (`app/models/item.py`)
@@ -118,7 +121,16 @@ class Item(IDMixin, TimestampMixin, Base):
     # owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
 ```
 
-### 2. Схемы (`app/schemas/item.py`)
+### 2. Не забудь зарегистрировать модель (`app/models/__init__.py`)
+```python
+from app.models.base import Base, IDMixin, TimestampMixin
+from app.models.user import User
+from app.models.item import Item  # ← добавь
+
+__all__ = ["Base", "IDMixin", "TimestampMixin", "User", "Item"]
+```
+
+### 3. Схемы (`app/schemas/item.py`)
 ```python
 import uuid
 from pydantic import BaseModel
@@ -138,23 +150,23 @@ class ItemUpdate(BaseModel):
     description: str | None = None
 ```
 
-### 3. Сервис (`app/services/item.py`)
+### 4. Сервис (`app/services/item.py`)
 ```python
 # Скопируй app/services/user.py и замени User -> Item
 ```
 
-### 4. Роутер (`app/api/items.py`)
+### 5. Роутер (`app/api/items.py`)
 ```python
 # Скопируй app/api/users.py и замени User -> Item
 ```
 
-### 5. Подключи в роутере (`app/api/router.py`)
+### 6. Подключи в роутере (`app/api/router.py`)
 ```python
 from app.api.items import router as items_router
 api_router.include_router(items_router, prefix="/items", tags=["Items"])
 ```
 
-### 6. Миграция
+### 7. Миграция
 ```bash
 alembic revision --autogenerate -m "add items"
 alembic upgrade head
@@ -181,6 +193,37 @@ docker-compose down -v        # остановка + удаление данны
 # Линтер
 ruff check app/
 ruff format app/
+```
+
+## 🗂 Готовые утилиты
+
+### Кастомные исключения
+```python
+from app.utils.exceptions import NotFoundException, BadRequestException
+
+raise NotFoundException("User not found")
+raise BadRequestException("Invalid email format")
+```
+
+### Пагинация
+```python
+from app.schemas.common import PaginatedResponse
+
+@router.get("/items", response_model=PaginatedResponse[ItemRead])
+async def list_items(page: int = 1, size: int = 20):
+    items, total = await get_items(db, offset=(page-1)*size, limit=size)
+    return PaginatedResponse(items=items, total=total, page=page, size=size)
+```
+
+### Опциональная аутентификация
+```python
+from app.dependencies.auth import OptionalUser
+
+@router.get("/feed")
+async def feed(user: OptionalUser):
+    if user:
+        return {"feed": "personalized"}
+    return {"feed": "public"}
 ```
 
 ## 📝 Лицензия

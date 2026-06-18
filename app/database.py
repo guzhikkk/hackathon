@@ -8,6 +8,7 @@
         result = await session.execute(select(User))
 """
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -21,7 +22,6 @@ settings = get_settings()
 # Engine — пул соединений к PostgreSQL
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,  # SQL логирование в debug режиме
     pool_size=5,
     max_overflow=10,
 )
@@ -38,9 +38,7 @@ async def init_db() -> None:
     """Проверка подключения к БД при старте."""
     async with engine.begin() as conn:
         # Простая проверка что БД доступна
-        await conn.execute(
-            __import__("sqlalchemy").text("SELECT 1")
-        )
+        await conn.execute(text("SELECT 1"))
 
 
 async def dispose_db() -> None:

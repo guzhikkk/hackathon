@@ -5,7 +5,6 @@
   POST /api/auth/register        — регистрация
   POST /api/auth/login           — вход (email + password)
   POST /api/auth/refresh         — обновление access токена
-  GET  /api/auth/me              — текущий пользователь
 """
 
 from typing import Annotated
@@ -13,7 +12,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies.auth import CurrentUser
 from app.dependencies.database import get_db
 from app.schemas.auth import (
     LoginRequest,
@@ -21,7 +19,7 @@ from app.schemas.auth import (
     RegisterRequest,
     TokenPair,
 )
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserCreate
 from app.services.auth import (
     create_token_pair,
     hash_password,
@@ -104,9 +102,3 @@ async def refresh(
 
     user_id = payload.get("sub")
     return create_token_pair(user_id)
-
-
-@router.get("/me", response_model=UserRead)
-async def get_me(user: CurrentUser):
-    """Получить данные текущего пользователя."""
-    return user

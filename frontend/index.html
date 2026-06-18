@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hackathon API Tester</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --error: #ef4444;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .output-box {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.875rem;
+            color: var(--success);
+            min-height: 100px;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .error-text {
+            color: var(--error);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .status-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .status-none {
+            background: rgba(148, 163, 184, 0.2);
+            color: #cbd5e1;
+        }
+
+        /* Hide elements by default */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🚀 Hackathon API Tester</h1>
+
+    <div class="container">
+        <!-- Левая колонка: Auth & Action -->
+        <div class="card">
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('login')" id="tab-login">Login</div>
+                <div class="tab" onclick="switchTab('register')" id="tab-register">Register</div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="l-email" value="test@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="l-password" value="password123" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="r-name" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="r-email" placeholder="new@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="r-password" required>
+                </div>
+                <button type="submit">Register</button>
+            </form>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 2rem 0;">
+
+            <h2>Protected Actions</h2>
+            <div id="authStatus" class="status-badge status-none">Not Authenticated</div>
+
+            <!-- Avatar update form -->
+            <div class="form-group" style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                <label>Update Avatar (Image)</label>
+                <input type="file" id="avatarFile" accept="image/*" style="margin-bottom: 0.5rem;">
+                <button onclick="uploadAvatar()" style="background: #eab308; color: #000;">Upload & Set Avatar</button>
+            </div>
+
+            <button onclick="getProfile()" style="background: #8b5cf6; margin-bottom: 1rem; margin-top: 1rem;">Get My Profile
+                (/me)</button>
+            <button onclick="getUsers()" style="background: #0ea5e9;">Get Users List</button>
+        </div>
+
+        <!-- Правая колонка: Output -->
+        <div class="card">
+            <h2>Response Output</h2>
+            <div id="avatarContainer" style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+            <div id="output" class="output-box">Waiting for requests...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/api';
+        let accessToken = null;
+
+        function switchTab(tab) {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('tab-login').classList.remove('active');
+            document.getElementById('tab-register').classList.remove('active');
+
+            document.getElementById(`${tab}Form`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
+        function setOutput(data, isError = false) {
+            const out = document.getElementById('output');
+            out.className = 'output-box ' + (isError ? 'error-text' : '');
+            out.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+
+            // Render avatars visually
+            const avatarContainer = document.getElementById('avatarContainer');
+            if (!isError && data && typeof data === 'object') {
+                if (data.avatar_url) {
+                    avatarContainer.innerHTML = `<img src="${data.avatar_url}" alt="Avatar" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);">`;
+                } else if (data.items && Array.isArray(data.items)) {
+                    let html = '';
+                    data.items.forEach(user => {
+                        if (user.avatar_url) {
+                            html += `<img src="${user.avatar_url}" alt="${user.full_name}" title="${user.full_name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--primary);">`;
+                        }
+                    });
+                    avatarContainer.innerHTML = html;
+                } else {
+                    avatarContainer.innerHTML = '';
+                }
+            } else {
+                avatarContainer.innerHTML = '';
+            }
+        }
+
+        function setAuthStatus(token) {
+            accessToken = token;
+            const status = document.getElementById('authStatus');
+            if (token) {
+                status.className = 'status-badge status-success';
+                status.textContent = 'Authenticated (JWT Active)';
+            } else {
+                status.className = 'status-badge status-none';
+                status.textContent = 'Not Authenticated';
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('l-email').value;
+            const password = document.getElementById('l-password').value;
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    setAuthStatus(data.access_token);
+                    setOutput(data);
+                } else {
+                    setOutput(data, true);
+                    setAuthStatus(null);
+                }
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const email = document.getElementById('r-email').value;
+            const password = document.getElementById('r-password').value;
+            const full_name = document.getElementById('r-name').value;
+
+            try {
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, full_name })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    setAuthStatus(data.access_token);
+                    setOutput(data);
+                } else {
+                    setOutput(data, true);
+                    setAuthStatus(null);
+                }
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function getProfile() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+
+            try {
+                const res = await fetch(`${API_URL}/users/me`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function getUsers() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+
+            try {
+                const res = await fetch(`${API_URL}/users`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function uploadAvatar() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            const fileInput = document.getElementById('avatarFile');
+            if (!fileInput.files.length) return setOutput('Error: Please select a file', true);
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('folder', 'avatars');
+
+            try {
+                // 1. Upload file to /api/files/upload
+                const uploadRes = await fetch(`${API_URL}/files/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                    body: formData
+                });
+                
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) {
+                    return setOutput(uploadData, true);
+                }
+
+                // 2. Save avatar_url to the user's profile
+                const patchRes = await fetch(`${API_URL}/users/me`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ avatar_url: uploadData.url })
+                });
+
+                const patchData = await patchRes.json();
+                setOutput(patchData, !patchRes.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+    </script>
+</body>
+
+</html>

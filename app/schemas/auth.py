@@ -1,6 +1,5 @@
 """Pydantic схемы для аутентификации."""
 
-import uuid
 
 from pydantic import BaseModel, EmailStr
 

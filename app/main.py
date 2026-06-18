@@ -16,7 +16,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import get_settings
 from app.database import dispose_db, init_db
-from app.middleware.timing import TimingMiddleware
 from app.services.s3 import s3_client
 from app.utils.exceptions import register_exception_handlers
 
@@ -30,16 +29,14 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Lifecycle: инициализация при старте, очистка при остановке."""
     # Startup
-    # Проверяем подключение к БД
     try:
         await init_db()
-    except Exception as e:
+    except Exception:
         pass
 
-    # Создаём S3 bucket если не существует
     try:
         await s3_client.ensure_bucket()
-    except Exception as e:
+    except Exception:
         pass
 
     yield
@@ -52,8 +49,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -62,14 +57,14 @@ app = FastAPI(
 # CORS — разрешаем всё (для хакатона это ок)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Timing
-app.add_middleware(TimingMiddleware)
 
 # ─── Exception Handlers ─────────────────────────────────
 
@@ -84,18 +79,6 @@ app.include_router(api_router)
 async def root():
     """Health check."""
     return {
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION,
         "status": "ok",
-        "docs": "/docs",
     }
 
-
-@app.get("/health", tags=["Health"])
-async def health():
-    """Детальный health check."""
-    return {
-        "status": "healthy",
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-    }
