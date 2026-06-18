@@ -58,6 +58,7 @@ class TestUserSchemas:
             full_name="John",
             avatar_url=None,
             is_active=True,
+            is_admin=False,
             created_at=datetime(2024, 1, 1),
         )
         user = UserRead.model_validate(obj)

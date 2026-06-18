@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies.database import get_db
 from app.schemas.auth import (
@@ -71,6 +72,33 @@ async def login(
     return create_token_pair(str(user.id))
 
 
+@router.post("/token", response_model=TokenPair)
+async def token(
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    user = await get_user_by_email(db, form.username)
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not verify_password(form.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return create_token_pair(str(user.id))
+
+
 @router.post("/refresh", response_model=TokenPair)
 async def refresh(
     data: RefreshRequest,
@@ -85,3 +113,4 @@ async def refresh(
 
     user_id = payload.get("sub")
     return create_token_pair(user_id)
+

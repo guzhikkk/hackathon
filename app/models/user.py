@@ -22,6 +22,9 @@ class User(IDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true"
     )
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"

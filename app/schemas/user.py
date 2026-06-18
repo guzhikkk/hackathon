@@ -16,6 +16,7 @@ class UserRead(BaseModel):
     full_name: str
     avatar_url: str | None = None
     is_active: bool
+    is_admin: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
