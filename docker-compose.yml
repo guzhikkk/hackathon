@@ -1,0 +1,69 @@
+# ============================================
+# FastAPI Hackathon Boilerplate
+# ============================================
+# Запуск:  docker-compose up -d
+# Логи:   docker-compose logs -f app
+# Стоп:   docker-compose down
+# Сброс:  docker-compose down -v  (удалит данные!)
+# ============================================
+
+services:
+  # ─── FastAPI App ─────────────────────────────────────────
+  app:
+    build: .
+    container_name: hackathon-app
+    ports:
+      - "8080:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://hackathon:hackathon@postgres:5432/hackathon
+      - S3_ENDPOINT_URL=http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    volumes:
+      # Hot-reload: монтируем код для разработки
+      - ./app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # ─── PostgreSQL ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hackathon-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: hackathon
+      POSTGRES_PASSWORD: hackathon
+      POSTGRES_DB: hackathon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackathon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── MinIO (S3-compatible) ──────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: hackathon-minio
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Web UI (логин: minioadmin / minioadmin)
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:

@@ -1,0 +1,112 @@
+"""
+Роутер аутентификации — регистрация, логин, refresh.
+
+Эндпоинты:
+  POST /api/auth/register        — регистрация
+  POST /api/auth/login           — вход (email + password)
+  POST /api/auth/refresh         — обновление access токена
+  GET  /api/auth/me              — текущий пользователь
+"""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.dependencies.auth import CurrentUser
+from app.dependencies.database import get_db
+from app.schemas.auth import (
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenPair,
+)
+from app.schemas.user import UserCreate, UserRead
+from app.services.auth import (
+    create_token_pair,
+    hash_password,
+    verify_password,
+    verify_refresh_token,
+)
+from app.services.user import create_user, get_user_by_email
+
+router = APIRouter()
+
+
+@router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
+async def register(
+    data: RegisterRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Регистрация нового пользователя."""
+    # Проверяем что email не занят
+    existing = await get_user_by_email(db, data.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    # Создаём пользователя
+    user = await create_user(
+        db,
+        UserCreate(
+            email=data.email,
+            hashed_password=hash_password(data.password),
+            full_name=data.full_name,
+        ),
+    )
+
+    # Возвращаем токены
+    return create_token_pair(str(user.id))
+
+
+@router.post("/login", response_model=TokenPair)
+async def login(
+    data: LoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Вход по email + password."""
+    user = await get_user_by_email(db, data.email)
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not verify_password(data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return create_token_pair(str(user.id))
+
+
+@router.post("/refresh", response_model=TokenPair)
+async def refresh(
+    data: RefreshRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Обновить access токен по refresh токену."""
+    payload = verify_refresh_token(data.refresh_token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user_id = payload.get("sub")
+    return create_token_pair(user_id)
+
+
+@router.get("/me", response_model=UserRead)
+async def get_me(user: CurrentUser):
+    """Получить данные текущего пользователя."""
+    return user
