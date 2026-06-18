@@ -72,6 +72,19 @@ async def test_update_me_avatar(client, fake_user):
     assert response.json()["avatar_url"] == "https://example.com/new-avatar.jpg"
 
 
+# ─── DELETE /me ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_delete_me(client, fake_user):
+    """Удаление своего профиля."""
+    with patch("app.api.users.delete_user", new_callable=AsyncMock) as mock_delete:
+        response = await client.delete("/api/users/me")
+
+    assert response.status_code == 204
+    mock_delete.assert_called_once()
+
+
 # ─── GET /users ──────────────────────────────────────────
 
 

@@ -18,7 +18,7 @@ from app.dependencies.auth import CurrentUser
 from app.dependencies.database import get_db
 from app.schemas.common import PaginatedResponse
 from app.schemas.user import UserRead, UserUpdate
-from app.services.user import get_user_by_id, get_users, update_user
+from app.services.user import get_user_by_id, get_users, update_user, delete_user
 
 router = APIRouter()
 
@@ -38,6 +38,15 @@ async def update_current_user(
     """Обновить профиль текущего пользователя."""
     updated = await update_user(db, user, data)
     return updated
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Удалить профиль текущего пользователя."""
+    await delete_user(db, user)
 
 
 @router.get("", response_model=PaginatedResponse[UserRead])

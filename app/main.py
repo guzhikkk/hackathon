@@ -17,18 +17,11 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.database import dispose_db, init_db
 from app.services.s3 import s3_client
-from app.utils.exceptions import register_exception_handlers
 
 settings = get_settings()
 
-
-# ─── Lifespan (startup / shutdown) ───────────────────────
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle: инициализация при старте, очистка при остановке."""
-    # Startup
     try:
         await init_db()
     except Exception:
@@ -40,21 +33,13 @@ async def lifespan(app: FastAPI):
         pass
 
     yield
-
-    # Shutdown
     await dispose_db()
-
-
-# ─── App ─────────────────────────────────────────────────
 
 
 app = FastAPI(
     lifespan=lifespan,
 )
 
-# ─── Middleware ──────────────────────────────────────────
-
-# CORS — разрешаем всё (для хакатона это ок)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -65,19 +50,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ─── Exception Handlers ─────────────────────────────────
-
-register_exception_handlers(app)
-
-# ─── Routes ──────────────────────────────────────────────
-
 app.include_router(api_router)
-
 
 @app.get("/", tags=["Health"])
 async def root():
-    """Health check."""
     return {
         "status": "ok",
     }
