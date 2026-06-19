@@ -185,8 +185,6 @@
 
 <body>
 
-    <h1>🚀 Hackathon API Tester</h1>
-
     <div class="container">
         <!-- Левая колонка: Auth & Action -->
         <div class="card">
@@ -232,13 +230,15 @@
             <div id="authStatus" class="status-badge status-none">Not Authenticated</div>
 
             <!-- Avatar update form -->
-            <div class="form-group" style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+            <div class="form-group"
+                style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
                 <label>Update Avatar (Image)</label>
                 <input type="file" id="avatarFile" accept="image/*" style="margin-bottom: 0.5rem;">
                 <button onclick="uploadAvatar()" style="background: #eab308; color: #000;">Upload & Set Avatar</button>
             </div>
 
-            <button onclick="getProfile()" style="background: #8b5cf6; margin-bottom: 1rem; margin-top: 1rem;">Get My Profile
+            <button onclick="getProfile()" style="background: #8b5cf6; margin-bottom: 1rem; margin-top: 1rem;">Get My
+                Profile
                 (/me)</button>
             <button onclick="getUsers()" style="background: #0ea5e9;">Get Users List</button>
         </div>
@@ -413,7 +413,7 @@
                     headers: { 'Authorization': `Bearer ${accessToken}` },
                     body: formData
                 });
-                
+
                 const uploadData = await uploadRes.json();
                 if (!uploadRes.ok) {
                     return setOutput(uploadData, true);
@@ -422,7 +422,7 @@
                 // 2. Save avatar_url to the user's profile
                 const patchRes = await fetch(`${API_URL}/users/me`, {
                     method: 'PATCH',
-                    headers: { 
+                    headers: {
                         'Authorization': `Bearer ${accessToken}`,
                         'Content-Type': 'application/json'
                     },
