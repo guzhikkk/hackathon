@@ -77,6 +77,12 @@ class S3Client:
                 Params={"Bucket": self.bucket_name, "Key": key},
                 ExpiresIn=expires_in,
             )
+            
+            # Делаем URL относительным для корректной работы через Nginx
+            # Nginx перехватит /uploads/... и проксирует в MinIO
+            if url.startswith(self.endpoint_url):
+                url = url.replace(self.endpoint_url, "", 1)
+                
             return url
 
     async def list_files(self, prefix: str = "") -> list[dict]:

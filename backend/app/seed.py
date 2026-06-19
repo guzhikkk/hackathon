@@ -3,7 +3,7 @@ from app.database import async_session_maker
 from app.models.user import User
 from app.services.auth import hash_password
 
-ADMIN_EMAIL = "admin"
+ADMIN_EMAIL = "admin@admin.com"
 
 async def seed():
     async with async_session_maker() as session:

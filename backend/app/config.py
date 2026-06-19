@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str = "minioadmin"
     S3_BUCKET_NAME: str = "uploads"
     S3_REGION: str = "us-east-1"
+    GIGACHAT_CREDENTIALS: str | None = None
+    AI_PROVIDER: str = "gigachat"
+    LOCAL_AI_BASE_URL: str = "http://localhost:11434/v1"
+    LOCAL_AI_API_KEY: str = "ollama"
 
 @lru_cache
 def get_settings() -> Settings:

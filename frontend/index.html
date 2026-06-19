@@ -252,10 +252,12 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:8000/api';
+        const API_URL = '/api';
         let accessToken = null;
 
         function isValidUrl(str) {
+            if (!str) return false;
+            if (str.startsWith('/')) return true;
             try {
                 const url = new URL(str);
                 return url.protocol === 'http:' || url.protocol === 'https:';
