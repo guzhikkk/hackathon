@@ -122,17 +122,25 @@ async def test_login_inactive_user(unauth_client):
 
 @pytest.mark.asyncio
 async def test_refresh_success(unauth_client):
-    refresh = create_refresh_token("user-123")
-
-    response = await unauth_client.post(
-        "/api/auth/refresh",
-        json={"refresh_token": refresh},
+    fake_id = uuid.uuid4()
+    refresh = create_refresh_token(str(fake_id))
+    fake_user = SimpleNamespace(
+        id=fake_id,
+        email="test@example.com",
+        is_active=True,
     )
+
+    with patch("app.api.auth.get_user_by_id", new_callable=AsyncMock, return_value=fake_user):
+        response = await unauth_client.post(
+            "/api/auth/refresh",
+            json={"refresh_token": refresh},
+        )
 
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
     assert "refresh_token" in data
+
 
 @pytest.mark.asyncio
 async def test_refresh_invalid_token(unauth_client):

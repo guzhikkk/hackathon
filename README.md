@@ -1,231 +1,396 @@
-# 🏆 FastAPI Hackathon Boilerplate
-
-Готовый шаблон для хакатонов на FastAPI. Разверни за 2 минуты и начни кодить фичи.
-
-## 🔥 Что внутри
-
-| Модуль | Описание |
-|--------|----------|
-| **Auth** | JWT (access + refresh), регистрация, логин |
-| **Database** | PostgreSQL + async SQLAlchemy 2.0 + Alembic миграции |
-| **Files** | S3/MinIO — загрузка, скачивание, presigned URLs |
-| **CRUD** | Готовый User CRUD с пагинацией — копируй для новых моделей |
-| **Docker** | docker-compose: app + postgres + minio за одну команду |
-| **DX** | CORS, exception handlers |
-
-## 🚀 Быстрый старт
-
 ```bash
-# 1. Клонируй / скопируй шаблон
-cd fastapi-hackathon-boilerplate
-
-# 2. Скопируй конфиг
-cp .env.example .env
-
-# 3. Запусти всё через Docker
+# Docker
 docker-compose up -d
 
-# 4. Примени миграции
-# (подожди 5 сек пока postgres стартует)
+#Запуск без Docker
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# библиотеки м миграции
 pip install -r requirements.txt
 alembic revision --autogenerate -m "initial"
 alembic upgrade head
 
-# 5. Открой документацию
-# Swagger UI: http://localhost:8080/docs
-# MinIO UI:   http://localhost:9001 (minioadmin / minioadmin)
+# первый админ
+python -m app.seed
 ```
 
-## 📁 Структура проекта
+    
+#### Регистрация
 
-```
-├── app/
-│   ├── main.py              # Точка входа FastAPI
-│   ├── config.py            # Настройки из .env
-│   ├── database.py          # Async SQLAlchemy
-│   ├── api/                 # Роутеры
-│   │   ├── router.py        # Главный роутер
-│   │   ├── auth.py          # /api/auth/*
-│   │   ├── users.py         # /api/users/*
-│   │   └── files.py         # /api/files/*
-│   ├── models/              # ORM модели
-│   │   ├── base.py          # Base + миксины (ID, Timestamps)
-│   │   └── user.py          # Модель User
-│   ├── schemas/             # Pydantic схемы
-│   │   ├── common.py        # PaginatedResponse, ErrorResponse
-│   │   ├── user.py          # UserCreate, UserRead, UserUpdate
-│   │   └── auth.py          # TokenPair, LoginRequest и т.д.
-│   ├── services/            # Бизнес-логика
-│   │   ├── auth.py          # JWT + bcrypt
-│   │   ├── user.py          # CRUD пользователей
-│   │   └── s3.py            # S3/MinIO клиент
-│   ├── dependencies/        # FastAPI Depends
-│   │   ├── auth.py          # get_current_user
-│   │   └── database.py      # get_db
-│   └── utils/               # Утилиты
-│       └── exceptions.py    # Кастомные исключения
-├── alembic/                 # Миграции БД
-├── docker-compose.yml
-├── Dockerfile
-├── .env.example
-├── requirements.txt
-└── pyproject.toml
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "mypassword123",
+    "full_name": "Иван Петров"
+  }'
 ```
 
-## 📖 API Эндпоинты
+**Тело запроса:**
+| Поле | Тип | Обязательное | Описание |
+|------|-----|:---:|----------|
+| `email` | string | ✅ | Email пользователя |
+| `password` | string | ✅ | Пароль |
+| `full_name` | string | ❌ | Полное имя (по-умолчанию `""`) |
 
-### Auth
-| Метод | URL | Описание |
-|-------|-----|----------|
-| POST | `/api/auth/register` | Регистрация |
-| POST | `/api/auth/login` | Вход (email + password) |
-| POST | `/api/auth/refresh` | Обновить access токен |
+**Ответ `201 Created`:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
+}
+```
+
+**Ошибки:**
+| Код | Когда |
+|-----|-------|
+| `409 Conflict` | Email уже зарегистрирован |
+| `422 Unprocessable Entity` | Невалидные данные |
+
+---
+
+#### Вход
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "mypassword123"
+  }'
+```
+
+**Тело запроса:**
+| Поле | Тип | Обязательное | Описание |
+|------|-----|:---:|----------|
+| `email` | string | ✅ | Email |
+| `password` | string | ✅ | Пароль |
+
+**Ответ `200 OK`:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
+}
+```
+
+**Ошибки:**
+| Код | Когда |
+|-----|-------|
+| `401 Unauthorized` | Неверный email или пароль |
+| `403 Forbidden` | Пользователь деактивирован |
+
+---
+
+#### Refresh
+
+```bash
+curl -X POST http://localhost:8080/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+  }'
+```
+
+**Ответ `200 OK`** — новая пара токенов.
+
+**Ошибки:**
+| Код | Когда |
+|-----|-------|
+| `401 Unauthorized` | Токен невалидный, истёк или пользователь не найден |
+| `403 Forbidden` | Пользователь деактивирован |
+
+---
+
+### Как использовать токен
+
+После логина/регистрации добавляй `access_token` в заголовок `Authorization`:
+
+```bash
+curl -X GET http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+```
 
 ### Users
-| Метод | URL | Описание |
-|-------|-----|----------|
-| GET | `/api/users` | Список (пагинация) |
-| GET | `/api/users/me` | Мой профиль |
-| PATCH | `/api/users/me` | Обновить профиль |
-| GET | `/api/users/{id}` | По ID |
 
-### Files
-| Метод | URL | Описание |
-|-------|-----|----------|
-| POST | `/api/files/upload` | Загрузить файл |
-| GET | `/api/files/{key}` | Presigned URL |
-| GET | `/api/files/{key}?download=true` | Скачать напрямую |
-| DELETE | `/api/files/{key}` | Удалить |
-| GET | `/api/files` | Список файлов |
-
-### Health
-| Метод | URL | Описание |
-|-------|-----|----------|
-| GET | `/` | Quick health check |
-| GET | `/health` | Детальный health check |
-
-## 🧩 Как добавить новый модуль (5 минут)
-
-### 1. Модель (`app/models/item.py`)
-```python
-from sqlalchemy import String, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.models.base import Base, IDMixin, TimestampMixin
-
-class Item(IDMixin, TimestampMixin, Base):
-    __tablename__ = "items"
-
-    title: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str] = mapped_column(String(2000), default="")
-    # owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-```
-
-### 2. Не забудь зарегистрировать модель (`app/models/__init__.py`)
-```python
-from app.models.base import Base, IDMixin, TimestampMixin
-from app.models.user import User
-from app.models.item import Item  # ← добавь
-
-__all__ = ["Base", "IDMixin", "TimestampMixin", "User", "Item"]
-```
-
-### 3. Схемы (`app/schemas/item.py`)
-```python
-import uuid
-from pydantic import BaseModel
-
-class ItemCreate(BaseModel):
-    title: str
-    description: str = ""
-
-class ItemRead(BaseModel):
-    id: uuid.UUID
-    title: str
-    description: str
-    model_config = {"from_attributes": True}
-
-class ItemUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
-```
-
-### 4. Сервис (`app/services/item.py`)
-```python
-# Скопируй app/services/user.py и замени User -> Item
-```
-
-### 5. Роутер (`app/api/items.py`)
-```python
-# Скопируй app/api/users.py и замени User -> Item
-```
-
-### 6. Подключи в роутере (`app/api/router.py`)
-```python
-from app.api.items import router as items_router
-api_router.include_router(items_router, prefix="/items", tags=["Items"])
-```
-
-### 7. Миграция
-```bash
-alembic revision --autogenerate -m "add items"
-alembic upgrade head
-```
-
-## 🛠 Полезные команды
+#### GET /me
 
 ```bash
-# Запуск без Docker (локально)
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-
-# Миграции
-alembic revision --autogenerate -m "описание"
-alembic upgrade head
-alembic downgrade -1
-
-# Docker
-docker-compose up -d          # запуск
-docker-compose logs -f app    # логи
-docker-compose down           # остановка
-docker-compose down -v        # остановка + удаление данных
-
-# Линтер
-ruff check app/
-ruff format app/
+curl http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer <token>"
 ```
 
-## 🗂 Готовые утилиты
-
-### Кастомные исключения
-```python
-from app.utils.exceptions import NotFoundException, BadRequestException
-
-raise NotFoundException("User not found")
-raise BadRequestException("Invalid email format")
+**Ответ `200 OK`:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "full_name": "Иван Петров",
+  "avatar_url": null,
+  "is_active": true,
+  "is_admin": false,
+  "created_at": "2025-01-15T10:30:00"
+}
 ```
 
-### Пагинация
-```python
-from app.schemas.common import PaginatedResponse
+---
 
-@router.get("/items", response_model=PaginatedResponse[ItemRead])
-async def list_items(page: int = 1, size: int = 20):
-    items, total = await get_items(db, offset=(page-1)*size, limit=size)
-    return PaginatedResponse(items=items, total=total, page=page, size=size)
+#### PATCH /me
+
+```bash
+curl -X PATCH http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Новое Имя",
+    "avatar_url": "https://example.com/photo.jpg"
+  }'
 ```
 
-### Опциональная аутентификация
-```python
-from app.dependencies.auth import OptionalUser
+**Тело запроса** (все поля опциональные):
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `full_name` | string \| null | Новое имя |
+| `avatar_url` | string \| null | URL аватарки |
 
-@router.get("/feed")
-async def feed(user: OptionalUser):
-    if user:
-        return {"feed": "personalized"}
-    return {"feed": "public"}
+**Ответ `200 OK`** — обновлённый профиль (формат как `/me`).
+
+---
+
+#### DELETE /me
+
+```bash
+curl -X DELETE http://localhost:8080/api/users/me \
+  -H "Authorization: Bearer <token>"
 ```
 
-## 📝 Лицензия
+**Ответ:** `204 No Content` (пустое тело).
 
-MIT — делай что хочешь, побеждай на хакатонах! 🏆
+---
+
+#### Список пользователей
+
+```bash
+curl http://localhost:8080/api/users \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Ответ `200 OK`:**
+```json
+[
+  {
+    "id": "550e8400-...",
+    "email": "user@example.com",
+    "full_name": "Иван Петров",
+    "avatar_url": null,
+    "is_active": true,
+    "is_admin": false,
+    "created_at": "2025-01-15T10:30:00"
+  },
+  ...
+]
+```
+
+**Ошибки:**
+| Код | Когда |
+|-----|-------|
+| `401 Unauthorized` | Нет токена |
+| `403 Forbidden` | Пользователь не админ |
+
+---
+
+#### Получить пользователя по ID
+
+```bash
+curl http://localhost:8080/api/users/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Ответ `200 OK`** — объект пользователя.
+
+**Ошибки:** `403` (не админ), `404` (не найден), `422` (невалидный UUID).
+
+---
+
+#### Обновить пользователя
+
+```bash
+curl -X PATCH http://localhost:8080/api/users/550e8400-... \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"full_name": "Изменённое Имя"}'
+```
+
+---
+
+#### Удалить пользователя
+
+```bash
+curl -X DELETE http://localhost:8080/api/users/550e8400-... \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Ответ:** `204 No Content`.
+
+---
+
+#### Изменить роль пользователя
+
+```bash
+curl -X PATCH http://localhost:8080/api/users/550e8400-.../role \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"is_admin": true}'
+```
+
+**Тело запроса:**
+| Поле | Тип | Обязательное | Описание |
+|------|-----|:---:|----------|
+| `is_admin` | boolean | ✅ | Назначить / снять админа |
+
+**Ответ `200 OK`** — обновлённый профиль пользователя.
+
+---
+
+### 📁 Files
+
+#### Загрузить файл
+
+```bash
+curl -X POST http://localhost:8080/api/files/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@photo.jpg" \
+  -F "folder=avatars"
+```
+
+Или через query-параметр:
+```bash
+curl -X POST "http://localhost:8080/api/files/upload?folder=avatars" \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@photo.jpg"
+```
+
+**Параметры:**
+| Параметр | Тип | Обязательное | Описание |
+|----------|-----|:---:|----------|
+| `file` | file (multipart) | ✅ | Загружаемый файл |
+| `folder` | string (query) | ❌ | Папка в bucket (по-умолчанию корень) |
+
+**Ответ `200 OK`:**
+```json
+{
+  "key": "avatars/a1b2c3d4e5f6.jpg",
+  "url": "http://localhost:9000/uploads/avatars/a1b2c3d4e5f6.jpg?X-Amz-Algorithm=...",
+  "filename": "photo.jpg",
+  "content_type": "image/jpeg",
+  "size": 245760
+}
+```
+
+> `key` — уникальный ключ файла в S3, используй его для получения/удаления.
+> `url` — presigned URL, доступен без авторизации в течение 1 часа.
+
+**Ошибки:**
+| Код | Когда |
+|-----|-------|
+| `413 Content Too Large` | Файл больше 50 MB |
+| `401 Unauthorized` | Нет токена |
+
+---
+
+#### Получить presigned URL файла
+
+```bash
+curl http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg \
+  -H "Authorization: Bearer <token>"
+```
+
+**Ответ `200 OK`:**
+```json
+{
+  "key": "avatars/a1b2c3d4e5f6.jpg",
+  "url": "http://localhost:9000/uploads/avatars/a1b2c3d4e5f6.jpg?X-Amz-Algorithm=..."
+}
+```
+
+---
+
+#### Скачать файл напрямую
+
+```bash
+curl -OJ "http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg?download=true" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Ответ:** бинарные данные файла с заголовком `Content-Disposition: attachment`.
+
+---
+
+#### Удалить файл
+
+```bash
+curl -X DELETE http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg \
+  -H "Authorization: Bearer <token>"
+```
+
+**Ответ `200 OK`:**
+```json
+{
+  "ok": true,
+  "message": "File 'avatars/a1b2c3d4e5f6.jpg' deleted"
+}
+```
+
+---
+
+#### Список файлов
+
+```bash
+curl http://localhost:8080/api/files \
+  -H "Authorization: Bearer <token>"
+
+
+curl "http://localhost:8080/api/files?prefix=avatars/" \
+  -H "Authorization: Bearer <token>"
+```
+
+**Ответ `200 OK`:**
+```json
+{
+  "files": [
+    {
+      "key": "avatars/a1b2c3d4e5f6.jpg",
+      "size": 245760,
+      "last_modified": "2025-01-15T10:30:00+00:00"
+    },
+    {
+      "key": "avatars/f6e5d4c3b2a1.png",
+      "size": 102400,
+      "last_modified": "2025-01-16T14:20:00+00:00"
+    }
+  ],
+  "total": 2
+}
+```
+
+### 🔧 Мониторинг
+
+| Сервис | URL | Логин |
+|--------|-----|-------|
+| Prometheus | http://localhost:9090 | — |
+| Grafana | http://localhost:3000 | admin / admin |
+| Метрики приложения | http://localhost:8080/metrics | — |
+
+---
+
+### Admin-панелm
+
+URL: `http://localhost:8080/admin`
+---
+
+# Тесты
+pytest tests/ -v

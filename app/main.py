@@ -10,8 +10,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import get_settings
-from app.database import dispose_db, init_db
+from app.database import dispose_db, init_db, engine
 from app.services.s3 import s3_client
+from sqladmin import Admin
+from app.admin import AdminAuth, UserAdmin
 
 settings = get_settings()
 
@@ -46,7 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#Мониторинг
+# Админка
+admin_auth = AdminAuth(secret_key=settings.JWT_SECRET_KEY)
+admin = Admin(app, engine, authentication_backend=admin_auth)
+admin.add_view(UserAdmin)
+
+# Мониторинг
 import time
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Request, Response

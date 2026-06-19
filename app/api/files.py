@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Query, status
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 
+from app.dependencies.auth import CurrentUser
 from app.services.s3 import s3_client
 
 router = APIRouter()
@@ -11,6 +12,7 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 
 @router.post("/upload")
 async def upload_file(
+    user: CurrentUser,
     file: UploadFile = File(...),
     folder: str = Query("", description="Папка в bucket"),
 ):
@@ -49,6 +51,7 @@ async def upload_file(
 @router.get("/{key:path}")
 async def get_file(
     key: str,
+    user: CurrentUser,
     download: bool = Query(False, description="Скачать файл напрямую"),
 ):
     if download:
@@ -78,7 +81,7 @@ async def get_file(
 
 
 @router.delete("/{key:path}")
-async def delete_file(key: str):
+async def delete_file(key: str, user: CurrentUser):
     try:
         await s3_client.delete_file(key)
         return {"ok": True, "message": f"File '{key}' deleted"}
@@ -91,6 +94,7 @@ async def delete_file(key: str):
 
 @router.get("")
 async def list_files(
+    user: CurrentUser,
     prefix: str = Query("", description="Фильтр по префиксу"),
 ):
     """Список файлов в bucket."""

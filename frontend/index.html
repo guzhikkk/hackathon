@@ -255,6 +255,15 @@
         const API_URL = 'http://127.0.0.1:8000/api';
         let accessToken = null;
 
+        function isValidUrl(str) {
+            try {
+                const url = new URL(str);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
         function switchTab(tab) {
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('registerForm').classList.add('hidden');
@@ -270,24 +279,28 @@
             out.className = 'output-box ' + (isError ? 'error-text' : '');
             out.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
 
-            // Render avatars visually
+            // Render avatars visually (safe DOM API — no innerHTML to prevent XSS)
             const avatarContainer = document.getElementById('avatarContainer');
+            avatarContainer.innerHTML = '';
             if (!isError && data && typeof data === 'object') {
-                if (data.avatar_url) {
-                    avatarContainer.innerHTML = `<img src="${data.avatar_url}" alt="Avatar" style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);">`;
-                } else if (data.items && Array.isArray(data.items)) {
-                    let html = '';
-                    data.items.forEach(user => {
-                        if (user.avatar_url) {
-                            html += `<img src="${user.avatar_url}" alt="${user.full_name}" title="${user.full_name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--primary);">`;
+                if (data.avatar_url && isValidUrl(data.avatar_url)) {
+                    const img = document.createElement('img');
+                    img.src = data.avatar_url;
+                    img.alt = 'Avatar';
+                    img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);';
+                    avatarContainer.appendChild(img);
+                } else if (Array.isArray(data)) {
+                    data.forEach(user => {
+                        if (user.avatar_url && isValidUrl(user.avatar_url)) {
+                            const img = document.createElement('img');
+                            img.src = user.avatar_url;
+                            img.alt = user.full_name || '';
+                            img.title = user.full_name || '';
+                            img.style.cssText = 'width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--primary);';
+                            avatarContainer.appendChild(img);
                         }
                     });
-                    avatarContainer.innerHTML = html;
-                } else {
-                    avatarContainer.innerHTML = '';
                 }
-            } else {
-                avatarContainer.innerHTML = '';
             }
         }
 

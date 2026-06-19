@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -16,7 +17,7 @@ from app.services.auth import (
     verify_password,
     verify_refresh_token,
 )
-from app.services.user import create_user, get_user_by_email
+from app.services.user import create_user, get_user_by_email, get_user_by_id
 
 router = APIRouter()
 
@@ -112,5 +113,24 @@ async def refresh(
         )
 
     user_id = payload.get("sub")
-    return create_token_pair(user_id)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    user = await get_user_by_id(db, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return create_token_pair(str(user.id))
 
