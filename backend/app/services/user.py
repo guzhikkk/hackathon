@@ -29,6 +29,7 @@ async def get_users(session: AsyncSession) -> list[User]:
     result = await session.execute(
         select(User)
         .order_by(User.created_at.desc())
+        .limit(100)
     )
     users = list(result.scalars().all())
 

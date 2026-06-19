@@ -37,3 +37,4 @@ alembic/versions/*.pyc
 .pytest_cache/
 htmlcov/
 .coverage
+.ruff_cache/

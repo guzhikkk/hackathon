@@ -38,6 +38,8 @@ class GigaChatService(BaseAIService):
                     response = giga.chat(payload)
                     return response.choices[0].message.content
             
-            return await asyncio.to_thread(_call_gigachat)
+            return await asyncio.wait_for(asyncio.to_thread(_call_gigachat), timeout=60.0)
+        except asyncio.TimeoutError:
+            return "Ошибка: GigaChat не ответил за 60 секунд (Таймаут)."
         except Exception as e:
             return f"Ошибка при обращении к GigaChat: {str(e)}"

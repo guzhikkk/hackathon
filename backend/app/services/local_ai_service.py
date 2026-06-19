@@ -12,6 +12,7 @@ class LocalAIService(BaseAIService):
         self.client = AsyncOpenAI(
             base_url=self.base_url,
             api_key=self.api_key,
+            timeout=60.0,
         )
 
     async def generate_response(
