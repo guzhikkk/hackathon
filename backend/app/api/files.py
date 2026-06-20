@@ -1,9 +1,14 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query, status, Depends
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.dependencies.auth import CurrentUser
+from app.dependencies.auth import CurrentUser, AdminUser
+from app.dependencies.database import get_db
 from app.services.s3 import s3_client
+from app.models.file import FileRecord
+from app.models.user import UserData
 
 router = APIRouter()
 
@@ -13,6 +18,7 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 @router.post("/upload")
 async def upload_file(
     user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
     folder: str = Query("", description="Папка в bucket"),
 ):
@@ -36,6 +42,11 @@ async def upload_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Upload failed: {str(e)}",
         )
+
+    
+    file_record = FileRecord(key=key, owner_id=user.id)
+    db.add(file_record)
+    await db.commit()
 
     url = await s3_client.generate_presigned_url(key)
 
@@ -81,9 +92,41 @@ async def get_file(
 
 
 @router.delete("/{key:path}")
-async def delete_file(key: str, user: CurrentUser):
+async def delete_file(
+    key: str, 
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    
+    result = await db.execute(select(FileRecord).where(FileRecord.key == key))
+    file_record = result.scalar_one_or_none()
+
+    if not file_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File record not found in DB",
+        )
+
+    if file_record.owner_id != user.id and not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own files",
+        )
+
+    
+    usage_count = await db.scalar(
+        select(UserData).where(UserData.avatar_url == key)
+    )
+    if usage_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete file because it is currently in use as an avatar",
+        )
+
     try:
         await s3_client.delete_file(key)
+        await db.delete(file_record)
+        await db.commit()
         return {"ok": True, "message": f"File '{key}' deleted"}
     except Exception as e:
         raise HTTPException(

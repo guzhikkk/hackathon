@@ -41,9 +41,12 @@ class AdminAuth(AuthenticationBackend):
             return False
         return True
 
+from app.models.user import UserData
+from app.models.file import FileRecord
+
 class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.full_name, User.is_admin, User.is_active, User.created_at]
-    column_searchable_list = [User.email, User.full_name]
+    column_list = [User.id, User.email, User.is_admin, User.is_active, User.created_at]
+    column_searchable_list = [User.email]
     column_sortable_list = [User.created_at, User.email]
     column_default_sort = ("created_at", True)
     form_excluded_columns = [User.id, User.created_at, User.updated_at]
@@ -51,3 +54,19 @@ class UserAdmin(ModelView, model=User):
     name = "User"
     name_plural = "Users"
     category = "Accounts"
+
+class UserDataAdmin(ModelView, model=UserData):
+    column_list = [UserData.id, UserData.user_id, UserData.full_name, UserData.avatar_url]
+    column_searchable_list = [UserData.full_name]
+    icon = "fa-solid fa-id-card"
+    name = "User Data"
+    name_plural = "User Data"
+    category = "Accounts"
+
+class FileRecordAdmin(ModelView, model=FileRecord):
+    column_list = [FileRecord.id, FileRecord.key, FileRecord.owner_id, FileRecord.created_at]
+    column_searchable_list = [FileRecord.key]
+    icon = "fa-solid fa-file"
+    name = "File"
+    name_plural = "Files"
+    category = "Storage"

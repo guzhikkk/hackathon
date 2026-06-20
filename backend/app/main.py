@@ -48,12 +48,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Админка
+
 admin_auth = AdminAuth(secret_key=settings.JWT_SECRET_KEY)
 admin = Admin(app, engine, authentication_backend=admin_auth)
 admin.add_view(UserAdmin)
 
-# Мониторинг
+
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Request, Response
 

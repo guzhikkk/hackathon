@@ -229,18 +229,52 @@
             <h2>Protected Actions</h2>
             <div id="authStatus" class="status-badge status-none">Not Authenticated</div>
 
-            <!-- Avatar update form -->
-            <div class="form-group"
-                style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
-                <label>Update Avatar (Image)</label>
-                <input type="file" id="avatarFile" accept="image/*" style="margin-bottom: 0.5rem;">
-                <button onclick="uploadAvatar()" style="background: #eab308; color: #000;">Upload & Set Avatar</button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="getProfile()" style="background: #8b5cf6; flex: 1;">Get Profile (/me)</button>
+                <button onclick="handleRefreshToken()" style="background: #3b82f6; flex: 1;">Refresh Token</button>
             </div>
 
-            <button onclick="getProfile()" style="background: #8b5cf6; margin-bottom: 1rem; margin-top: 1rem;">Get My
-                Profile
-                (/me)</button>
-            <button onclick="getUsers()" style="background: #0ea5e9;">Get Users List</button>
+            <!-- Profile Settings -->
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted);">Profile Settings</h3>
+                <div class="form-group">
+                    <input type="text" id="updateName" placeholder="New Full Name" style="margin-bottom: 0.5rem;">
+                    <button onclick="updateProfileName()" style="background: #6366f1;">Update Name</button>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <input type="file" id="avatarFile" accept="image/*" style="margin-bottom: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button onclick="uploadAvatar()" style="background: #eab308; color: #000; flex: 1;">Set Avatar</button>
+                        <button onclick="removeAvatar()" style="background: #f97316; color: #fff; flex: 1;">Clear Avatar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Management -->
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted);">File Management</h3>
+                <button onclick="listFiles()" style="background: #0ea5e9; margin-bottom: 0.5rem;">List My Files</button>
+                
+                <div class="form-group" style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem;">
+                    <input type="file" id="genericFile" style="flex: 2;">
+                    <input type="text" id="fileFolder" placeholder="Folder (opt)" style="flex: 1;">
+                    <button onclick="uploadGenericFile()" style="background: #10b981; margin: 0; flex: 1;">Upload</button>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0; display: flex; gap: 0.5rem;">
+                    <input type="text" id="deleteFileKey" placeholder="File Key (e.g. folder/file.txt)" style="flex: 3;">
+                    <button onclick="deleteFile()" style="background: #ef4444; margin: 0; flex: 1;">Delete File</button>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div style="margin-top: 1rem; padding: 1rem; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 0.5rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; color: #f87171;">Danger Zone</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button onclick="deleteAccount()" style="background: #991b1b; flex: 1;">Delete Account</button>
+                    <button onclick="handleLogout()" style="background: #ef4444; flex: 1;">Logout</button>
+                </div>
+            </div>
         </div>
 
         <!-- Правая колонка: Output -->
@@ -253,7 +287,15 @@
 
     <script>
         const API_URL = '/api';
-        let accessToken = null;
+        let accessToken = localStorage.getItem('accessToken') || null;
+
+        // При загрузке страницы проверяем, есть ли токен
+        window.onload = () => {
+            if (accessToken) {
+                setAuthStatus(accessToken);
+                getProfile(); // Пробуем сразу получить профиль, чтобы проверить валидность
+            }
+        };
 
         function isValidUrl(str) {
             if (!str) return false;
@@ -285,19 +327,19 @@
             const avatarContainer = document.getElementById('avatarContainer');
             avatarContainer.innerHTML = '';
             if (!isError && data && typeof data === 'object') {
-                if (data.avatar_url && isValidUrl(data.avatar_url)) {
+                if (data.user_data && data.user_data.avatar_url && isValidUrl(data.user_data.avatar_url)) {
                     const img = document.createElement('img');
-                    img.src = data.avatar_url;
+                    img.src = data.user_data.avatar_url;
                     img.alt = 'Avatar';
                     img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);';
                     avatarContainer.appendChild(img);
                 } else if (Array.isArray(data)) {
                     data.forEach(user => {
-                        if (user.avatar_url && isValidUrl(user.avatar_url)) {
+                        if (user.user_data && user.user_data.avatar_url && isValidUrl(user.user_data.avatar_url)) {
                             const img = document.createElement('img');
-                            img.src = user.avatar_url;
-                            img.alt = user.full_name || '';
-                            img.title = user.full_name || '';
+                            img.src = user.user_data.avatar_url;
+                            img.alt = user.user_data.full_name || '';
+                            img.title = user.user_data.full_name || '';
                             img.style.cssText = 'width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--primary);';
                             avatarContainer.appendChild(img);
                         }
@@ -310,11 +352,14 @@
             accessToken = token;
             const status = document.getElementById('authStatus');
             if (token) {
+                localStorage.setItem('accessToken', token);
                 status.className = 'status-badge status-success';
                 status.textContent = 'Authenticated (JWT Active)';
             } else {
+                localStorage.removeItem('accessToken');
                 status.className = 'status-badge status-none';
                 status.textContent = 'Not Authenticated';
+                document.getElementById('avatarContainer').innerHTML = '';
             }
         }
 
@@ -369,12 +414,145 @@
             }
         }
 
+        async function handleLogout() {
+            if (!accessToken) return setOutput('Already logged out', false);
+            try {
+                const res = await fetch(`${API_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                
+                if (res.ok) {
+                    setAuthStatus(null);
+                    setOutput('Logged out successfully', false);
+                } else {
+                    const data = await res.json();
+                    setOutput(data, true);
+                }
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function handleRefreshToken() {
+            try {
+                const res = await fetch(`${API_URL}/auth/refresh`, {
+                    method: 'POST'
+                    // We don't send Authorization header here, relies on HttpOnly refresh_token cookie
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setAuthStatus(data.access_token);
+                    setOutput(data);
+                } else {
+                    setOutput(data, true);
+                }
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
         async function getProfile() {
             if (!accessToken) return setOutput('Error: Please login first', true);
 
             try {
                 const res = await fetch(`${API_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function updateProfileName() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            const newName = document.getElementById('updateName').value;
+            if (!newName) return setOutput('Error: Name cannot be empty', true);
+
+            try {
+                const res = await fetch(`${API_URL}/users/me`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ full_name: newName })
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function deleteAccount() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+
+            try {
+                const res = await fetch(`${API_URL}/users/me`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (res.ok) {
+                    setAuthStatus(null);
+                    setOutput('Account deleted successfully', false);
+                } else {
+                    const data = await res.json();
+                    setOutput(data, true);
+                }
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function listFiles() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            try {
+                const res = await fetch(`${API_URL}/files/list`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function deleteFile() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            const key = document.getElementById('deleteFileKey').value;
+            if (!key) return setOutput('Error: File key cannot be empty', true);
+
+            try {
+                const res = await fetch(`${API_URL}/files/${encodeURIComponent(key)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                setOutput(data, !res.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function uploadGenericFile() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            const fileInput = document.getElementById('genericFile');
+            const folderInput = document.getElementById('fileFolder').value;
+            if (!fileInput.files.length) return setOutput('Error: Please select a file', true);
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            if (folderInput) formData.append('folder', folderInput);
+
+            try {
+                const res = await fetch(`${API_URL}/files/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}` },
+                    body: formData
                 });
                 const data = await res.json();
                 setOutput(data, !res.ok);
@@ -427,6 +605,25 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ avatar_url: uploadData.url })
+                });
+
+                const patchData = await patchRes.json();
+                setOutput(patchData, !patchRes.ok);
+            } catch (err) {
+                setOutput(err.message, true);
+            }
+        }
+
+        async function removeAvatar() {
+            if (!accessToken) return setOutput('Error: Please login first', true);
+            try {
+                const patchRes = await fetch(`${API_URL}/users/me`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ avatar_url: null })
                 });
 
                 const patchData = await patchRes.json();

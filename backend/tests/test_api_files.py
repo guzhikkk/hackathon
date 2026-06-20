@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -78,8 +79,18 @@ async def test_get_file_not_found(client):
 
     assert response.status_code == 404
 
+from unittest.mock import MagicMock
+
 @pytest.mark.asyncio
-async def test_delete_file(client):
+async def test_delete_file(client, fake_user, mock_db):
+    fake_record = SimpleNamespace(owner_id=fake_user.id, key="old-file.txt")
+    
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = fake_record
+    
+    mock_db.execute.return_value = mock_result
+    mock_db.scalar.return_value = 0  # usage_count
+
     with patch("app.api.files.s3_client") as mock_s3:
         mock_s3.delete_file = AsyncMock()
 
@@ -90,7 +101,15 @@ async def test_delete_file(client):
     assert data["ok"] is True
 
 @pytest.mark.asyncio
-async def test_delete_file_error(client):
+async def test_delete_file_error(client, fake_user, mock_db):
+    fake_record = SimpleNamespace(owner_id=fake_user.id, key="broken.txt")
+    
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = fake_record
+    
+    mock_db.execute.return_value = mock_result
+    mock_db.scalar.return_value = 0  # usage_count
+
     with patch("app.api.files.s3_client") as mock_s3:
         mock_s3.delete_file = AsyncMock(side_effect=Exception("S3 error"))
 

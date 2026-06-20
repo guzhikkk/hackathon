@@ -1,39 +1,48 @@
 import uuid
-from sqlalchemy import func, select
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User
+from app.models.user import User, UserData
 from app.schemas.user import UserCreate, UserUpdate
 
 
 async def create_user(session: AsyncSession, data: UserCreate) -> User:
-    user = User(**data.model_dump())
+    user = User(
+        email=data.email, 
+        hashed_password=data.hashed_password
+    )
+    user_data = UserData(
+        full_name=data.full_name,
+        avatar_url=data.avatar_url
+    )
+    user.user_data = user_data
     session.add(user)
     await session.commit()
-    await session.refresh(user)
-    return user
+    return await get_user_by_id(session, user.id)
 
 
 async def get_user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
-    return await session.get(User, user_id)
+    result = await session.execute(
+        select(User).options(joinedload(User.user_data)).where(User.id == user_id)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
     result = await session.execute(
-        select(User).where(User.email == email)
+        select(User).options(joinedload(User.user_data)).where(User.email == email)
     )
     return result.scalar_one_or_none()
-
 
 
 async def get_users(session: AsyncSession) -> list[User]:
     result = await session.execute(
         select(User)
+        .options(joinedload(User.user_data))
         .order_by(User.created_at.desc())
         .limit(100)
     )
-    users = list(result.scalars().all())
-
-    return users
+    return list(result.scalars().all())
 
 
 async def update_user(
@@ -42,11 +51,15 @@ async def update_user(
     data: UserUpdate,
 ) -> User:
     update_data = data.model_dump(exclude_unset=True)
+    
+    if not user.user_data:
+        user.user_data = UserData(user_id=user.id)
+
     for field, value in update_data.items():
-        setattr(user, field, value)
+        setattr(user.user_data, field, value)
+        
     await session.commit()
-    await session.refresh(user)
-    return user
+    return await get_user_by_id(session, user.id)
 
 
 async def delete_user(session: AsyncSession, user: User) -> None:

@@ -3,6 +3,13 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 
+class UserDataSchema(BaseModel):
+    full_name: str
+    avatar_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     hashed_password: str
@@ -13,11 +20,10 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     id: uuid.UUID
     email: str
-    full_name: str
-    avatar_url: str | None = None
     is_active: bool
     is_admin: bool
     created_at: datetime
+    user_data: UserDataSchema | None = None
 
     model_config = {"from_attributes": True}
 

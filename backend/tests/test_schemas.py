@@ -55,15 +55,17 @@ class TestUserSchemas:
         obj = SimpleNamespace(
             id=uuid.uuid4(),
             email="u@example.com",
-            full_name="John",
-            avatar_url=None,
+            user_data=SimpleNamespace(
+                full_name="John",
+                avatar_url=None,
+            ),
             is_active=True,
             is_admin=False,
             created_at=datetime(2024, 1, 1),
         )
         user = UserRead.model_validate(obj)
         assert user.email == "u@example.com"
-        assert user.full_name == "John"
+        assert user.user_data.full_name == "John"
 
     def test_user_update_partial(self):
         data = UserUpdate(full_name="New Name")

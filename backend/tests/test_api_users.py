@@ -13,7 +13,7 @@ async def test_get_me(client):
     assert response.status_code == 200
     data = response.json()
     assert data["email"] == "test@example.com"
-    assert data["full_name"] == "Test User"
+    assert data["user_data"]["full_name"] == "Test User"
     assert data["is_active"] is True
     assert data["is_admin"] is False
 
@@ -22,8 +22,10 @@ async def test_update_me(client, fake_user):
     updated = SimpleNamespace(
         id=fake_user.id,
         email=fake_user.email,
-        full_name="Updated Name",
-        avatar_url=None,
+        user_data=SimpleNamespace(
+            full_name="Updated Name",
+            avatar_url=None,
+        ),
         is_active=True,
         is_admin=False,
         created_at=fake_user.created_at,
@@ -37,15 +39,17 @@ async def test_update_me(client, fake_user):
         )
 
     assert response.status_code == 200
-    assert response.json()["full_name"] == "Updated Name"
+    assert response.json()["user_data"]["full_name"] == "Updated Name"
 
 @pytest.mark.asyncio
 async def test_update_me_avatar(client, fake_user):
     updated = SimpleNamespace(
         id=fake_user.id,
         email=fake_user.email,
-        full_name=fake_user.full_name,
-        avatar_url="https://example.com/new-avatar.jpg",
+        user_data=SimpleNamespace(
+            full_name=fake_user.user_data.full_name,
+            avatar_url="https://example.com/new-avatar.jpg",
+        ),
         is_active=True,
         is_admin=False,
         created_at=fake_user.created_at,
@@ -59,7 +63,7 @@ async def test_update_me_avatar(client, fake_user):
         )
 
     assert response.status_code == 200
-    assert response.json()["avatar_url"] == "https://example.com/new-avatar.jpg"
+    assert response.json()["user_data"]["avatar_url"] == "https://example.com/new-avatar.jpg"
 
 @pytest.mark.asyncio
 async def test_delete_me(client, fake_user):
@@ -124,8 +128,10 @@ async def test_admin_update_user(admin_client, fake_user):
     updated = SimpleNamespace(
         id=fake_user.id,
         email=fake_user.email,
-        full_name="Admin Changed",
-        avatar_url=None,
+        user_data=SimpleNamespace(
+            full_name="Admin Changed",
+            avatar_url=None,
+        ),
         is_active=True,
         is_admin=False,
         created_at=fake_user.created_at,
@@ -142,7 +148,7 @@ async def test_admin_update_user(admin_client, fake_user):
         )
 
     assert response.status_code == 200
-    assert response.json()["full_name"] == "Admin Changed"
+    assert response.json()["user_data"]["full_name"] == "Admin Changed"
 
 @pytest.mark.asyncio
 async def test_admin_update_user_forbidden(client, fake_user):

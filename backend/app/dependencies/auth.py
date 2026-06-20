@@ -1,10 +1,9 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.dependencies.database import get_db
 from app.models.user import User
 from app.services.auth import verify_access_token
@@ -13,9 +12,13 @@ security = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
 
 
 async def get_current_user(
-    token: Annotated[str | None, Depends(security)],
+    token_header: Annotated[str | None, Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    access_token: Annotated[str | None, Cookie()] = None,
 ) -> User:
+    
+    
+    token = token_header or access_token
 
     if not token:
         raise HTTPException(
@@ -39,7 +42,8 @@ async def get_current_user(
             detail="Invalid token payload",
         )
 
-    user = await db.get(User, uuid.UUID(user_id))
+    from app.services.user import get_user_by_id
+    user = await get_user_by_id(db, uuid.UUID(user_id))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
