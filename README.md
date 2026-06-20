@@ -1,436 +1,126 @@
+# Документация проекта
+
+## Запуск проекта
+
 ```bash
-# Docker
+cp .env.example .env
+```
+
+### Запуск через Docker
+```bash
 docker-compose up -d
+```
 
-#Запуск без Docker
+### Локальный запуск (без Docker)
+```bash
+# Установка зависимостей
 pip install -r requirements.txt
-uvicorn app.main:app --reload
 
-# библиотеки м миграции
-pip install -r requirements.txt
+# Применение миграций БД
 alembic revision --autogenerate -m "initial"
 alembic upgrade head
 
-# первый админ
+# Создание админа
 python -m app.seed
+
+# Запуск приложения
+uvicorn app.main:app --reload
 ```
 
-    
-#### Регистрация
+## Описание API
 
+Все запросы к API (кроме авторизации) требуют наличия токена в заголовке `Authorization: Bearer <token>`. Базовый URL: `http://localhost:8080/api`
+
+### Авторизация (Auth)
+
+* **`POST /auth/register`** — Регистрация нового пользователя.
+  * **Тело запроса:** `email` (строка, обязат.), `password` (строка, обязат.), `full_name` (строка, опционально).
+  * **Ответ (201):** `access_token`, `refresh_token`, `token_type`.
+
+* **`POST /auth/login`** — Вход в систему.
+  * **Тело запроса:** `email` (строка, обязат.), `password` (строка, обязат.).
+  * **Ответ (200):** `access_token`, `refresh_token`, `token_type`.
+
+* **`POST /auth/refresh`** — Обновление токенов.
+  * **Тело запроса:** `refresh_token` (строка, обязат.).
+  * **Ответ (200):** Новая пара `access_token` и `refresh_token`.
+
+### Пользователи (Users)
+
+* **`GET /users/me`** — Получение профиля текущего пользователя.
+  * **Ответ (200):** ID, email, имя, статус активности, роль (админ или нет), дата создания, URL аватара.
+
+* **`PATCH /users/me`** — Обновление своего профиля.
+  * **Тело запроса:** `full_name` (строка, опц.), `avatar_url` (строка, опц.).
+  * **Ответ (200):** Обновленные данные пользователя.
+
+* **`DELETE /users/me`** — Удаление своего аккаунта.
+  * **Ответ (204):** Успешное удаление без тела ответа.
+
+* **`GET /users`** (Только для админов) — Получение списка всех пользователей.
+  * **Ответ (200):** Массив объектов пользователей.
+
+* **`GET /users/{id}`** (Только для админов) — Получение данных пользователя по ID.
+  * **Параметры пути:** `id` (UUID).
+  * **Ответ (200):** Данные пользователя.
+
+* **`PATCH /users/{id}`** (Только для админов) — Обновление профиля пользователя по ID.
+  * **Тело запроса:** Любые обновляемые поля (имя, аватар и т.д.).
+  * **Ответ (200):** Обновленные данные.
+
+* **`DELETE /users/{id}`** (Только для админов) — Удаление пользователя.
+  * **Ответ (204):** Успешное удаление.
+
+* **`PATCH /users/{id}/role`** (Только для админов) — Изменение прав администратора.
+  * **Тело запроса:** `is_admin` (boolean, обязат.).
+  * **Ответ (200):** Данные пользователя с новой ролью.
+
+### Файлы (Files)
+
+* **`POST /files/upload`** — Загрузка файла в S3 (MinIO).
+  * **Формат:** `multipart/form-data`.
+  * **Параметры:** `file` (файл, обязат.), `folder` (строка, опц., папка назначения).
+  * **Ответ (200):** Уникальный ключ (`key`), presigned-ссылка (`url`), имя файла, тип и размер.
+
+* **`GET /files/{key}`** — Получение временной presigned-ссылки для просмотра.
+  * **Параметры пути:** `key` (уникальный ключ файла в S3).
+  * **Ответ (200):** Ключ и временная ссылка `url`.
+
+* **`GET /files/{key}?download=true`** — Скачивание файла.
+  * **Ответ (200):** Бинарные данные файла с заголовком `Content-Disposition: attachment`.
+
+* **`DELETE /files/{key}`** — Удаление файла.
+  * **Ответ (200):** Статус успешного удаления.
+
+* **`GET /files`** — Получение списка файлов.
+  * **Query-параметры:** `prefix` (строка, опц., фильтр по папке).
+  * **Ответ (200):** Список файлов (`key`, размер, дата изменения) и общее количество.
+
+### Интеграция с ИИ (AI)
+
+* **`POST /ai/chat`** — Отправка запроса к нейросети (GigaChat).
+  * **Тело запроса:** 
+    * `message` (строка, обязат.) — текст сообщения.
+    * `system_prompt` (строка, опц.) — контекст или роль бота.
+    * `temperature` (число, опц.) — креативность генерации (по умолчанию 0.7).
+    * `max_tokens` (число, опц.) — лимит токенов в ответе.
+    * `model` (строка, опц.) — выбор модели.
+  * **Ответ (200):** Сгенерированный текстовый ответ (`response`).
+
+## Сервисы и порты (Docker)
+При запуске через Docker поднимаются следующие сервисы:
+* **80** — Nginx (раздача статики frontend и проксирование)
+* **8080** — Backend API (приложение на FastAPI)
+* **5433** — PostgreSQL (база данных)
+* **9000** — MinIO (API объектного хранилища S3)
+* **9001** — MinIO Console (веб-интерфейс хранилища)
+* **9090** — Prometheus (сбор метрик)
+* **3000** — Grafana (дашборды мониторинга)
+
+## Панель администратора
+Доступна по адресу: `http://localhost:8080/admin`
+
+## Тестирование
 ```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "mypassword123",
-    "full_name": "Иван Петров"
-  }'
-```
-
-**Тело запроса:**
-| Поле | Тип | Обязательное | Описание |
-|------|-----|:---:|----------|
-| `email` | string | ✅ | Email пользователя |
-| `password` | string | ✅ | Пароль |
-| `full_name` | string | ❌ | Полное имя (по-умолчанию `""`) |
-
-**Ответ `201 Created`:**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer"
-}
-```
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `409 Conflict` | Email уже зарегистрирован |
-| `422 Unprocessable Entity` | Невалидные данные |
-
----
-
-#### Вход
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "mypassword123"
-  }'
-```
-
-**Тело запроса:**
-| Поле | Тип | Обязательное | Описание |
-|------|-----|:---:|----------|
-| `email` | string | ✅ | Email |
-| `password` | string | ✅ | Пароль |
-
-**Ответ `200 OK`:**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-  "token_type": "bearer"
-}
-```
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `401 Unauthorized` | Неверный email или пароль |
-| `403 Forbidden` | Пользователь деактивирован |
-
----
-
-#### Refresh
-
-```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
-  }'
-```
-
-**Ответ `200 OK`** — новая пара токенов.
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `401 Unauthorized` | Токен невалидный, истёк или пользователь не найден |
-| `403 Forbidden` | Пользователь деактивирован |
-
----
-
-### Как использовать токен
-
-После логина/регистрации добавляй `access_token` в заголовок `Authorization`:
-
-```bash
-curl -X GET http://localhost:8080/api/users/me \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
-```
-
-### Users
-
-#### GET /me
-
-```bash
-curl http://localhost:8080/api/users/me \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ `200 OK`:**
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "full_name": "Иван Петров",
-  "avatar_url": null,
-  "is_active": true,
-  "is_admin": false,
-  "created_at": "2025-01-15T10:30:00"
-}
-```
-
----
-
-#### PATCH /me
-
-```bash
-curl -X PATCH http://localhost:8080/api/users/me \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Новое Имя",
-    "avatar_url": "https://example.com/photo.jpg"
-  }'
-```
-
-**Тело запроса** (все поля опциональные):
-| Поле | Тип | Описание |
-|------|-----|----------|
-| `full_name` | string \| null | Новое имя |
-| `avatar_url` | string \| null | URL аватарки |
-
-**Ответ `200 OK`** — обновлённый профиль (формат как `/me`).
-
----
-
-#### DELETE /me
-
-```bash
-curl -X DELETE http://localhost:8080/api/users/me \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ:** `204 No Content` (пустое тело).
-
----
-
-#### Список пользователей
-
-```bash
-curl http://localhost:8080/api/users \
-  -H "Authorization: Bearer <admin_token>"
-```
-
-**Ответ `200 OK`:**
-```json
-[
-  {
-    "id": "550e8400-...",
-    "email": "user@example.com",
-    "full_name": "Иван Петров",
-    "avatar_url": null,
-    "is_active": true,
-    "is_admin": false,
-    "created_at": "2025-01-15T10:30:00"
-  },
-  ...
-]
-```
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `401 Unauthorized` | Нет токена |
-| `403 Forbidden` | Пользователь не админ |
-
----
-
-#### Получить пользователя по ID
-
-```bash
-curl http://localhost:8080/api/users/550e8400-e29b-41d4-a716-446655440000 \
-  -H "Authorization: Bearer <admin_token>"
-```
-
-**Ответ `200 OK`** — объект пользователя.
-
-**Ошибки:** `403` (не админ), `404` (не найден), `422` (невалидный UUID).
-
----
-
-#### Обновить пользователя
-
-```bash
-curl -X PATCH http://localhost:8080/api/users/550e8400-... \
-  -H "Authorization: Bearer <admin_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"full_name": "Изменённое Имя"}'
-```
-
----
-
-#### Удалить пользователя
-
-```bash
-curl -X DELETE http://localhost:8080/api/users/550e8400-... \
-  -H "Authorization: Bearer <admin_token>"
-```
-
-**Ответ:** `204 No Content`.
-
----
-
-#### Изменить роль пользователя
-
-```bash
-curl -X PATCH http://localhost:8080/api/users/550e8400-.../role \
-  -H "Authorization: Bearer <admin_token>" \
-  -H "Content-Type: application/json" \
-  -d '{"is_admin": true}'
-```
-
-**Тело запроса:**
-| Поле | Тип | Обязательное | Описание |
-|------|-----|:---:|----------|
-| `is_admin` | boolean | ✅ | Назначить / снять админа |
-
-**Ответ `200 OK`** — обновлённый профиль пользователя.
-
----
-
-### 📁 Files
-
-#### Загрузить файл
-
-```bash
-curl -X POST http://localhost:8080/api/files/upload \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@photo.jpg" \
-  -F "folder=avatars"
-```
-
-Или через query-параметр:
-```bash
-curl -X POST "http://localhost:8080/api/files/upload?folder=avatars" \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@photo.jpg"
-```
-
-**Параметры:**
-| Параметр | Тип | Обязательное | Описание |
-|----------|-----|:---:|----------|
-| `file` | file (multipart) | ✅ | Загружаемый файл |
-| `folder` | string (query) | ❌ | Папка в bucket (по-умолчанию корень) |
-
-**Ответ `200 OK`:**
-```json
-{
-  "key": "avatars/a1b2c3d4e5f6.jpg",
-  "url": "http://localhost:9000/uploads/avatars/a1b2c3d4e5f6.jpg?X-Amz-Algorithm=...",
-  "filename": "photo.jpg",
-  "content_type": "image/jpeg",
-  "size": 245760
-}
-```
-
-> `key` — уникальный ключ файла в S3, используй его для получения/удаления.
-> `url` — presigned URL, доступен без авторизации в течение 1 часа.
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `413 Content Too Large` | Файл больше 50 MB |
-| `401 Unauthorized` | Нет токена |
-
----
-
-#### Получить presigned URL файла
-
-```bash
-curl http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ `200 OK`:**
-```json
-{
-  "key": "avatars/a1b2c3d4e5f6.jpg",
-  "url": "http://localhost:9000/uploads/avatars/a1b2c3d4e5f6.jpg?X-Amz-Algorithm=..."
-}
-```
-
----
-
-#### Скачать файл напрямую
-
-```bash
-curl -OJ "http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg?download=true" \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ:** бинарные данные файла с заголовком `Content-Disposition: attachment`.
-
----
-
-#### Удалить файл
-
-```bash
-curl -X DELETE http://localhost:8080/api/files/avatars/a1b2c3d4e5f6.jpg \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ `200 OK`:**
-```json
-{
-  "ok": true,
-  "message": "File 'avatars/a1b2c3d4e5f6.jpg' deleted"
-}
-```
-
----
-
-#### Список файлов
-
-```bash
-curl http://localhost:8080/api/files \
-  -H "Authorization: Bearer <token>"
-
-
-curl "http://localhost:8080/api/files?prefix=avatars/" \
-  -H "Authorization: Bearer <token>"
-```
-
-**Ответ `200 OK`:**
-```json
-{
-  "files": [
-    {
-      "key": "avatars/a1b2c3d4e5f6.jpg",
-      "size": 245760,
-      "last_modified": "2025-01-15T10:30:00+00:00"
-    },
-    {
-      "key": "avatars/f6e5d4c3b2a1.png",
-      "size": 102400,
-      "last_modified": "2025-01-16T14:20:00+00:00"
-    }
-  ],
-  "total": 2
-}
-```
-
-### 🤖 AI (Искусственный интеллект)
-
-#### Отправить запрос нейросети (GigaChat)
-
-```bash
-curl -X POST http://localhost:8080/api/ai/chat \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Расскажи шутку про хакатон",
-    "system_prompt": "Ты саркастичный программист",
-    "temperature": 0.8,
-    "max_tokens": 500,
-    "model": "GigaChat"
-  }'
-```
-
-**Тело запроса:**
-| Поле | Тип | Обязательное | Описание |
-|------|-----|:---:|----------|
-| `message` | string | ✅ | Сообщение/Вопрос для нейросети |
-| `system_prompt` | string | ❌ | Системный промпт (роль бота) |
-| `temperature` | float | ❌ | Креативность ответа (0.0 - 2.0, по-умолчанию `0.7`) |
-| `max_tokens` | int | ❌ | Максимальное число токенов в ответе (по-умолчанию `1000`) |
-| `model` | string | ❌ | Название модели (по-умолчанию `GigaChat`) |
-
-**Ответ `200 OK`:**
-```json
-{
-  "response": "На хакатоне выигрывает не тот, кто написал лучший код, а тот, чей костыль дожил до конца презентации."
-}
-```
-
-**Ошибки:**
-| Код | Когда |
-|-----|-------|
-| `401 Unauthorized` | Нет токена |
-
----
-
-### 🔧 Мониторинг
-
-| Сервис | URL | Логин |
-|--------|-----|-------|
-| Prometheus | http://localhost:9090 | — |
-| Grafana | http://localhost:3000 | admin / admin |
-| Метрики приложения | http://localhost:8080/metrics | — |
-
----
-
-### Admin-панелm
-
-URL: `http://localhost:8080/admin`
----
-
-# Тесты
 pytest tests/ -v
+```
