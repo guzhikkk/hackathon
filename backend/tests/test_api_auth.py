@@ -133,10 +133,8 @@ async def test_refresh_success(unauth_client):
     )
 
     with patch("app.services.auth.get_user_by_id", return_value=fake_user):
-        response = await unauth_client.post(
-            "/api/auth/refresh",
-            cookies={"refresh_token": refresh},
-        )
+        unauth_client.cookies.set("refresh_token", refresh)
+        response = await unauth_client.post("/api/auth/refresh")
 
     assert response.status_code == 200
     data = response.json()
@@ -147,20 +145,15 @@ async def test_refresh_success(unauth_client):
 
 @pytest.mark.asyncio
 async def test_refresh_invalid_token(unauth_client):
-    response = await unauth_client.post(
-        "/api/auth/refresh",
-        cookies={"refresh_token": "invalid-token"},
-    )
+    unauth_client.cookies.set("refresh_token", "invalid-token")
+    response = await unauth_client.post("/api/auth/refresh")
     assert response.status_code == 401
 
 @pytest.mark.asyncio
 async def test_refresh_with_access_token(unauth_client):
     access = create_access_token("user-123")
-
-    response = await unauth_client.post(
-        "/api/auth/refresh",
-        cookies={"refresh_token": access},
-    )
+    unauth_client.cookies.set("refresh_token", access)
+    response = await unauth_client.post("/api/auth/refresh")
     assert response.status_code == 401
 
 @pytest.mark.asyncio

@@ -49,7 +49,10 @@ def fake_admin(fake_user_id):
 
 @pytest.fixture
 def mock_db():
-    return AsyncMock()
+    from unittest.mock import MagicMock
+    mock = AsyncMock()
+    mock.add = MagicMock()
+    return mock
 
 @pytest_asyncio.fixture
 async def client(fake_user, mock_db):

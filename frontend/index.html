@@ -1,288 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hackathon API Tester</title>
+    <title>API Tester (Minimal)</title>
     <style>
-        :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --error: #ef4444;
-            --success: #22c55e;
-        }
-
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 2rem;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        h1 {
-            background: linear-gradient(to right, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 2rem;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 2rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-        }
-
-        h2 {
-            margin-top: 0;
-            font-size: 1.25rem;
-            color: var(--text);
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        input {
-            width: 100%;
-            padding: 0.75rem;
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            color: var(--text);
-            box-sizing: border-box;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus {
-            border-color: var(--primary);
-        }
-
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            margin-top: 0.5rem;
-        }
-
-        button:hover {
-            background: var(--primary-hover);
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        .output-box {
-            background: #0f172a;
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 0.875rem;
-            color: var(--success);
-            min-height: 100px;
-            overflow-y: auto;
-            max-height: 300px;
-        }
-
-        .error-text {
-            color: var(--error);
-        }
-
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .tab {
-            cursor: pointer;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            background: transparent;
-            color: var(--text-muted);
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .tab.active {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--primary);
-            border: 1px solid var(--primary);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-
-        .status-success {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-        }
-
-        .status-error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-        }
-
-        .status-none {
-            background: rgba(148, 163, 184, 0.2);
-            color: #cbd5e1;
-        }
-
-        /* Hide elements by default */
-        .hidden {
-            display: none;
-        }
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 10px; }
+        section { border: 1px solid #999; padding: 15px; margin-bottom: 15px; }
+        h1, h2, h3 { margin-top: 0; }
+        .output { background: #eee; padding: 10px; white-space: pre-wrap; font-family: monospace; border: 1px solid #ccc; max-height: 400px; overflow-y: auto; }
+        .error { color: red; }
+        .hidden { display: none; }
+        .row { margin-bottom: 5px; }
+        hr { margin: 15px 0; border: none; border-top: 1px dashed #999; }
+        .grid { display: flex; gap: 15px; }
+        .col { flex: 1; }
+        #avatarContainer img { max-width: 100px; display: block; margin-bottom: 10px; border: 1px solid #000; }
     </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <!-- Левая колонка: Auth & Action -->
-        <div class="card">
+    <h1>API Tester</h1>
+    <p>Status: <strong id="authStatus">Not Authenticated</strong></p>
 
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('login')" id="tab-login">Login</div>
-                <div class="tab" onclick="switchTab('register')" id="tab-register">Register</div>
-            </div>
-
-            <!-- Login Form -->
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="l-email" value="test@example.com" required>
+    <div class="grid">
+        <div class="col">
+            <section>
+                <h2>1. Auth</h2>
+                <div style="margin-bottom: 10px;">
+                    <input type="radio" name="authTab" id="rLogin" checked onchange="toggleAuth()"> <label for="rLogin">Login</label>
+                    <input type="radio" name="authTab" id="rReg" onchange="toggleAuth()"> <label for="rReg">Register</label>
                 </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="l-password" value="password123" required>
-                </div>
-                <button type="submit">Login</button>
-                <a href="http://localhost:8080/api/auth/google/login" style="display: block; width: 100%; text-align: center; padding: 0.75rem; background: #ea4335; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 0.5rem; box-sizing: border-box; transition: background 0.2s;">Sign in with Google</a>
-            </form>
 
-            <!-- Register Form -->
-            <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" id="r-name" placeholder="John Doe">
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="r-email" placeholder="new@example.com" required>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="r-password" required>
-                </div>
-                <button type="submit">Register</button>
-            </form>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="row"><input type="email" id="l-email" value="test@example.com" placeholder="Email" required></div>
+                    <div class="row"><input type="password" id="l-password" value="password123" placeholder="Password" required></div>
+                    <button type="submit">Login</button>
+                    <a href="http://localhost:8080/api/auth/google/login"><button type="button">Google Login</button></a>
+                </form>
 
-            <hr style="border: 0; border-top: 1px solid var(--border); margin: 2rem 0;">
+                <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
+                    <div class="row"><input type="text" id="r-name" placeholder="Full Name"></div>
+                    <div class="row"><input type="email" id="r-email" placeholder="Email" required></div>
+                    <div class="row"><input type="password" id="r-password" placeholder="Password" required></div>
+                    <button type="submit">Register</button>
+                </form>
 
-            <h2>Protected Actions</h2>
-            <div id="authStatus" class="status-badge status-none">Not Authenticated</div>
+                <hr>
+                <button onclick="handleRefreshToken()">Refresh Token</button>
+                <button onclick="handleLogout()">Logout</button>
+            </section>
 
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button onclick="getProfile()" style="background: #8b5cf6; flex: 1;">Get Profile (/me)</button>
-                <button onclick="handleRefreshToken()" style="background: #3b82f6; flex: 1;">Refresh Token</button>
-            </div>
-
-            <!-- Profile Settings -->
-            <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
-                <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted);">Profile Settings</h3>
-                <div class="form-group">
-                    <input type="text" id="updateName" placeholder="New Full Name" style="margin-bottom: 0.5rem;">
-                    <button onclick="updateProfileName()" style="background: #6366f1;">Update Name</button>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <input type="file" id="avatarFile" accept="image/*" style="margin-bottom: 0.5rem;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="uploadAvatar()" style="background: #eab308; color: #000; flex: 1;">Set Avatar</button>
-                        <button onclick="removeAvatar()" style="background: #f97316; color: #fff; flex: 1;">Clear Avatar</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- File Management -->
-            <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem;">
-                <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted);">File Management</h3>
-                <button onclick="listFiles()" style="background: #0ea5e9; margin-bottom: 0.5rem;">List My Files</button>
+            <section>
+                <h2>2. Users & Profile</h2>
+                <button onclick="getProfile()">Get /me</button>
+                <button onclick="getUsers()">Get All Users</button>
                 
-                <div class="form-group" style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem;">
-                    <input type="file" id="genericFile" style="flex: 2;">
-                    <input type="text" id="fileFolder" placeholder="Folder (opt)" style="flex: 1;">
-                    <button onclick="uploadGenericFile()" style="background: #10b981; margin: 0; flex: 1;">Upload</button>
+                <hr>
+                <div class="row">
+                    <input type="text" id="updateName" placeholder="New Name">
+                    <button onclick="updateProfileName()">Update Name</button>
+                </div>
+                <div class="row">
+                    <input type="file" id="avatarFile" accept="image/*">
+                </div>
+                <button onclick="uploadAvatar()">Set Avatar</button>
+                <button onclick="removeAvatar()">Clear Avatar</button>
+
+                <hr>
+                <div class="row">
+                    <input type="text" id="adminUserId" placeholder="User ID (UUID)">
+                </div>
+                <button onclick="getUserById()">Get User</button>
+                <button onclick="adminDeleteUser()">Delete User</button>
+                <br><br>
+                <select id="adminUserRole">
+                    <option value="true">Admin</option>
+                    <option value="false">User</option>
+                </select>
+                <button onclick="updateUserRole()">Set Role</button>
+            </section>
+
+            <section>
+                <h2>3. AI Chat</h2>
+                <div class="row"><input type="text" id="aiSystemPrompt" placeholder="System Prompt (optional)" style="width: 100%;"></div>
+                <div class="row"><textarea id="aiMessage" rows="3" placeholder="Message..." style="width: 100%;" required></textarea></div>
+                <button onclick="chatWithAI()">Send to AI</button>
+            </section>
+
+            <section>
+                <h2>4. Files</h2>
+                <button onclick="listFiles()">List My Files</button>
+                
+                <hr>
+                <div class="row">
+                    <input type="file" id="genericFile">
+                </div>
+                <div class="row">
+                    <input type="text" id="fileFolder" placeholder="Folder (optional)">
+                    <button onclick="uploadGenericFile()">Upload</button>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 0; display: flex; gap: 0.5rem;">
-                    <input type="text" id="deleteFileKey" placeholder="File Key (e.g. folder/file.txt)" style="flex: 3;">
-                    <button onclick="deleteFile()" style="background: #ef4444; margin: 0; flex: 1;">Delete File</button>
+                <hr>
+                <div class="row">
+                    <input type="text" id="fileKey" placeholder="File Key" style="width: 100%;">
                 </div>
-            </div>
-
-            <!-- Danger Zone -->
-            <div style="margin-top: 1rem; padding: 1rem; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 0.5rem;">
-                <h3 style="margin-top: 0; font-size: 1rem; color: #f87171;">Danger Zone</h3>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button onclick="deleteAccount()" style="background: #991b1b; flex: 1;">Delete Account</button>
-                    <button onclick="handleLogout()" style="background: #ef4444; flex: 1;">Logout</button>
-                </div>
-            </div>
+                <button onclick="getFileUrl()">Get URL</button>
+                <button onclick="downloadFile()">Download</button>
+                <button onclick="deleteFile()">Delete</button>
+            </section>
         </div>
 
-        <!-- Правая колонка: Output -->
-        <div class="card">
-            <h2>Response Output</h2>
-            <div id="avatarContainer" style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
-            <div id="output" class="output-box">Waiting for requests...</div>
+        <div class="col">
+            <section style="position: sticky; top: 20px;">
+                <h2>Output</h2>
+                <div id="avatarContainer"></div>
+                <div id="output" class="output">Waiting for actions...</div>
+            </section>
         </div>
     </div>
 
@@ -290,87 +124,38 @@
         const API_URL = '/api';
         let accessToken = localStorage.getItem('accessToken') || null;
 
-        // При загрузке страницы проверяем, есть ли токен
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const verifyToken = urlParams.get('verify');
-            const authSuccess = urlParams.get('auth');
-            
-            if (verifyToken) {
-                try {
-                    const res = await fetch(`${API_URL}/auth/verify-email`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: verifyToken })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        alert('Email verified successfully! You can now login or view your profile.');
-                    } else {
-                        alert('Verification failed: ' + (data.detail || data.message));
-                    }
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } catch (err) {
-                    alert('Error verifying email: ' + err.message);
-                }
-            }
-
-            if (authSuccess === 'success') {
+            if (urlParams.get('auth') === 'success') {
                 window.history.replaceState({}, document.title, window.location.pathname);
-                await handleRefreshToken(); // this will set the token from the cookie
+                await handleRefreshToken();
             }
-
             if (accessToken) {
                 setAuthStatus(accessToken);
-                getProfile(); // Пробуем сразу получить профиль, чтобы проверить валидность
+                getProfile();
             }
         };
 
-        function isValidUrl(str) {
-            if (!str) return false;
-            if (str.startsWith('/')) return true;
-            try {
-                const url = new URL(str);
-                return url.protocol === 'http:' || url.protocol === 'https:';
-            } catch {
-                return false;
-            }
-        }
-
-        function switchTab(tab) {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('tab-login').classList.remove('active');
-            document.getElementById('tab-register').classList.remove('active');
-
-            document.getElementById(`${tab}Form`).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).classList.add('active');
+        function toggleAuth() {
+            const isLogin = document.getElementById('rLogin').checked;
+            document.getElementById('loginForm').className = isLogin ? '' : 'hidden';
+            document.getElementById('registerForm').className = isLogin ? 'hidden' : '';
         }
 
         function setOutput(data, isError = false) {
             const out = document.getElementById('output');
-            out.className = 'output-box ' + (isError ? 'error-text' : '');
+            out.className = 'output ' + (isError ? 'error' : '');
             out.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
 
-            // Render avatars visually (safe DOM API — no innerHTML to prevent XSS)
             const avatarContainer = document.getElementById('avatarContainer');
             avatarContainer.innerHTML = '';
             if (!isError && data && typeof data === 'object') {
-                if (data.user_data && data.user_data.avatar_url && isValidUrl(data.user_data.avatar_url)) {
-                    const img = document.createElement('img');
-                    img.src = data.user_data.avatar_url;
-                    img.alt = 'Avatar';
-                    img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary);';
-                    avatarContainer.appendChild(img);
+                if (data.user_data?.avatar_url) {
+                    avatarContainer.innerHTML = `<img src="${data.user_data.avatar_url}">`;
                 } else if (Array.isArray(data)) {
-                    data.forEach(user => {
-                        if (user.user_data && user.user_data.avatar_url && isValidUrl(user.user_data.avatar_url)) {
-                            const img = document.createElement('img');
-                            img.src = user.user_data.avatar_url;
-                            img.alt = user.user_data.full_name || '';
-                            img.title = user.user_data.full_name || '';
-                            img.style.cssText = 'width: 50px; height: 50px; object-fit: cover; border-radius: 50%; border: 2px solid var(--primary);';
-                            avatarContainer.appendChild(img);
+                    data.forEach(u => {
+                        if (u.user_data?.avatar_url) {
+                            avatarContainer.innerHTML += `<img src="${u.user_data.avatar_url}" title="${u.email}">`;
                         }
                     });
                 }
@@ -382,286 +167,154 @@
             const status = document.getElementById('authStatus');
             if (token) {
                 localStorage.setItem('accessToken', token);
-                status.className = 'status-badge status-success';
-                status.textContent = 'Authenticated (JWT Active)';
+                status.textContent = 'Authenticated';
+                status.style.color = 'green';
             } else {
                 localStorage.removeItem('accessToken');
-                status.className = 'status-badge status-none';
                 status.textContent = 'Not Authenticated';
+                status.style.color = 'black';
                 document.getElementById('avatarContainer').innerHTML = '';
             }
         }
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            const email = document.getElementById('l-email').value;
-            const password = document.getElementById('l-password').value;
-
+        async function fetchAPI(endpoint, options = {}) {
+            if (accessToken && !options.noAuth) {
+                options.headers = { ...options.headers, 'Authorization': `Bearer ${accessToken}` };
+            }
             try {
-                const res = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                const res = await fetch(`${API_URL}${endpoint}`, options);
+                if (res.status === 204) {
+                    setOutput("Success (204 No Content)", false);
+                    return { ok: true };
+                }
+                
+                const contentType = res.headers.get("content-type");
+                if (contentType?.includes("application/octet-stream")) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const disp = res.headers.get('content-disposition');
+                    a.download = disp && disp.includes('filename=') ? disp.split('filename=')[1] : "file";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    setOutput(`Downloaded: ${a.download}`, false);
+                    return { ok: true };
+                }
 
                 const data = await res.json();
                 if (res.ok) {
-                    setAuthStatus(data.access_token);
                     setOutput(data);
+                    return { ok: true, data };
                 } else {
                     setOutput(data, true);
-                    setAuthStatus(null);
+                    return { ok: false, data };
                 }
             } catch (err) {
                 setOutput(err.message, true);
+                return { ok: false, err };
             }
+        }
+
+        // --- AUTH ---
+        async function handleLogin(e) {
+            e.preventDefault();
+            const res = await fetchAPI('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: lEmail.value, password: lPassword.value }),
+                noAuth: true
+            });
+            if (res.ok) setAuthStatus(res.data.access_token);
+            else setAuthStatus(null);
         }
 
         async function handleRegister(e) {
             e.preventDefault();
-            const email = document.getElementById('r-email').value;
-            const password = document.getElementById('r-password').value;
-            const full_name = document.getElementById('r-name').value;
-
-            try {
-                const res = await fetch(`${API_URL}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, full_name })
-                });
-
-                const data = await res.json();
-                if (res.ok) {
-                    setAuthStatus(data.access_token);
-                    setOutput(data);
-                } else {
-                    setOutput(data, true);
-                    setAuthStatus(null);
-                }
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            const res = await fetchAPI('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: rEmail.value, password: rPassword.value, full_name: rName.value }),
+                noAuth: true
+            });
+            if (res.ok) setAuthStatus(res.data.access_token);
+            else setAuthStatus(null);
         }
 
         async function handleLogout() {
-            if (!accessToken) return setOutput('Already logged out', false);
-            try {
-                const res = await fetch(`${API_URL}/auth/logout`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                
-                if (res.ok) {
-                    setAuthStatus(null);
-                    setOutput('Logged out successfully', false);
-                } else {
-                    const data = await res.json();
-                    setOutput(data, true);
-                }
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            if (await fetchAPI('/auth/logout', { method: 'POST' }).then(r => r.ok)) setAuthStatus(null);
         }
 
         async function handleRefreshToken() {
-            try {
-                const res = await fetch(`${API_URL}/auth/refresh`, {
-                    method: 'POST'
-                    // We don't send Authorization header here, relies on HttpOnly refresh_token cookie
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    setAuthStatus(data.access_token);
-                    setOutput(data);
-                } else {
-                    setOutput(data, true);
-                }
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            const res = await fetchAPI('/auth/refresh', { method: 'POST', noAuth: true });
+            if (res.ok) setAuthStatus(res.data.access_token);
         }
 
-        async function getProfile() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-
-            try {
-                const res = await fetch(`${API_URL}/users/me`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
-        }
-
+        // --- USERS ---
+        async function getProfile() { await fetchAPI('/users/me'); }
+        async function getUsers() { await fetchAPI('/users'); }
+        async function getUserById() { await fetchAPI(`/users/${document.getElementById('adminUserId').value}`); }
+        async function adminDeleteUser() { await fetchAPI(`/users/${document.getElementById('adminUserId').value}`, { method: 'DELETE' }); }
+        
         async function updateProfileName() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            const newName = document.getElementById('updateName').value;
-            if (!newName) return setOutput('Error: Name cannot be empty', true);
-
-            try {
-                const res = await fetch(`${API_URL}/users/me`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ full_name: newName })
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            await fetchAPI('/users/me', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_name: document.getElementById('updateName').value })
+            });
         }
 
-        async function deleteAccount() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
-
-            try {
-                const res = await fetch(`${API_URL}/users/me`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (res.ok) {
-                    setAuthStatus(null);
-                    setOutput('Account deleted successfully', false);
-                } else {
-                    const data = await res.json();
-                    setOutput(data, true);
-                }
-            } catch (err) {
-                setOutput(err.message, true);
-            }
-        }
-
-        async function listFiles() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            try {
-                const res = await fetch(`${API_URL}/files/list`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
-        }
-
-        async function deleteFile() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            const key = document.getElementById('deleteFileKey').value;
-            if (!key) return setOutput('Error: File key cannot be empty', true);
-
-            try {
-                const res = await fetch(`${API_URL}/files/${encodeURIComponent(key)}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
-        }
-
-        async function uploadGenericFile() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            const fileInput = document.getElementById('genericFile');
-            const folderInput = document.getElementById('fileFolder').value;
-            if (!fileInput.files.length) return setOutput('Error: Please select a file', true);
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            if (folderInput) formData.append('folder', folderInput);
-
-            try {
-                const res = await fetch(`${API_URL}/files/upload`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
-                    body: formData
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
-        }
-
-        async function getUsers() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-
-            try {
-                const res = await fetch(`${API_URL}/users`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                const data = await res.json();
-                setOutput(data, !res.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+        async function updateUserRole() {
+            await fetchAPI(`/users/${document.getElementById('adminUserId').value}/role`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_admin: document.getElementById('adminUserRole').value === 'true' })
+            });
         }
 
         async function uploadAvatar() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            const fileInput = document.getElementById('avatarFile');
-            if (!fileInput.files.length) return setOutput('Error: Please select a file', true);
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-            formData.append('folder', 'avatars');
-
-            try {
-                // 1. Upload file to /api/files/upload
-                const uploadRes = await fetch(`${API_URL}/files/upload`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}` },
-                    body: formData
-                });
-
-                const uploadData = await uploadRes.json();
-                if (!uploadRes.ok) {
-                    return setOutput(uploadData, true);
-                }
-
-                // 2. Save avatar_url to the user's profile
-                const patchRes = await fetch(`${API_URL}/users/me`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ avatar_url: uploadData.url })
-                });
-
-                const patchData = await patchRes.json();
-                setOutput(patchData, !patchRes.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            const f = document.getElementById('avatarFile');
+            if (!f.files.length) return setOutput('No file', true);
+            const fd = new FormData(); fd.append('file', f.files[0]); fd.append('folder', 'avatars');
+            const r = await fetchAPI('/files/upload', { method: 'POST', body: fd });
+            if (r.ok) await fetchAPI('/users/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: r.data.url }) });
         }
 
         async function removeAvatar() {
-            if (!accessToken) return setOutput('Error: Please login first', true);
-            try {
-                const patchRes = await fetch(`${API_URL}/users/me`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ avatar_url: null })
-                });
-
-                const patchData = await patchRes.json();
-                setOutput(patchData, !patchRes.ok);
-            } catch (err) {
-                setOutput(err.message, true);
-            }
+            await fetchAPI('/users/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: null }) });
         }
+
+        // --- FILES ---
+        async function listFiles() { await fetchAPI('/files'); }
+        async function getFileUrl() { await fetchAPI(`/files/${encodeURIComponent(document.getElementById('fileKey').value)}`); }
+        async function downloadFile() { await fetchAPI(`/files/${encodeURIComponent(document.getElementById('fileKey').value)}?download=true`); }
+        async function deleteFile() { await fetchAPI(`/files/${encodeURIComponent(document.getElementById('fileKey').value)}`, { method: 'DELETE' }); }
+
+        async function uploadGenericFile() {
+            const f = document.getElementById('genericFile');
+            const d = document.getElementById('fileFolder').value;
+            if (!f.files.length) return setOutput('No file', true);
+            const fd = new FormData(); fd.append('file', f.files[0]); if(d) fd.append('folder', d);
+            await fetchAPI('/files/upload', { method: 'POST', body: fd });
+        }
+
+        // --- AI CHAT ---
+        async function chatWithAI() {
+            setOutput("Loading...");
+            const msg = document.getElementById('aiMessage').value;
+            const sys = document.getElementById('aiSystemPrompt').value;
+            const payload = { message: msg };
+            if (sys) payload.system_prompt = sys;
+            await fetchAPI('/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        }
+
+        const lEmail = document.getElementById('l-email');
+        const lPassword = document.getElementById('l-password');
+        const rName = document.getElementById('r-name');
+        const rEmail = document.getElementById('r-email');
+        const rPassword = document.getElementById('r-password');
     </script>
 </body>
-
 </html>
