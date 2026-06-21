@@ -27,8 +27,8 @@ class User(IDMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(
         String(320), unique=True, index=True, nullable=False
     )
-    hashed_password: Mapped[str] = mapped_column(
-        String(1024), nullable=False
+    hashed_password: Mapped[str | None] = mapped_column(
+        String(1024), nullable=True
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true"

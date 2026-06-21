@@ -162,3 +162,44 @@ async def test_refresh_with_access_token(unauth_client):
         cookies={"refresh_token": access},
     )
     assert response.status_code == 401
+
+@pytest.mark.asyncio
+async def test_google_login_redirect(unauth_client):
+    with patch("app.api.auth.settings.GOOGLE_CLIENT_ID", "mock_id"):
+        response = await unauth_client.get("/api/auth/google/login", follow_redirects=False)
+        assert response.status_code == 307
+        assert "accounts.google.com/o/oauth2/v2/auth" in response.headers["location"]
+
+@pytest.mark.asyncio
+async def test_google_callback_success(unauth_client):
+    with patch(
+        "app.api.auth.authenticate_google_user_logic",
+        return_value={"access_token": "google_access", "refresh_token": "google_refresh", "token_type": "bearer"}
+    ):
+        response = await unauth_client.get(
+            "/api/auth/google/callback?code=mock_code",
+            follow_redirects=False
+        )
+
+    assert response.status_code == 302
+    assert "http://localhost/?auth=success" in response.headers["location"]
+    assert "access_token" in response.cookies
+    assert "refresh_token" in response.cookies
+
+@pytest.mark.asyncio
+async def test_login_no_password_google_user(unauth_client):
+    fake_user = SimpleNamespace(
+        id=uuid.uuid4(),
+        email="test@example.com",
+        hashed_password=None,
+        is_active=True,
+    )
+
+    with patch("app.services.auth.get_user_by_email", return_value=fake_user):
+        response = await unauth_client.post(
+            "/api/auth/login",
+            json={"email": "test@example.com", "password": "password123"},
+        )
+
+    assert response.status_code == 400
+    assert "linked to Google" in response.json()["detail"]

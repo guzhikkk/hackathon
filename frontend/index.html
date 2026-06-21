@@ -205,6 +205,7 @@
                     <input type="password" id="l-password" value="password123" required>
                 </div>
                 <button type="submit">Login</button>
+                <a href="http://localhost:8080/api/auth/google/login" style="display: block; width: 100%; text-align: center; padding: 0.75rem; background: #ea4335; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; margin-top: 0.5rem; box-sizing: border-box; transition: background 0.2s;">Sign in with Google</a>
             </form>
 
             <!-- Register Form -->
@@ -293,6 +294,7 @@
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const verifyToken = urlParams.get('verify');
+            const authSuccess = urlParams.get('auth');
             
             if (verifyToken) {
                 try {
@@ -311,6 +313,11 @@
                 } catch (err) {
                     alert('Error verifying email: ' + err.message);
                 }
+            }
+
+            if (authSuccess === 'success') {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                await handleRefreshToken(); // this will set the token from the cookie
             }
 
             if (accessToken) {

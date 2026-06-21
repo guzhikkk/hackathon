@@ -73,6 +73,8 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Миграции в online режиме (async)."""
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_async_migrations())
 
 

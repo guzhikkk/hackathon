@@ -125,10 +125,16 @@ async def register_user_logic(data: RegisterRequest, db: AsyncSession, backgroun
 
 async def authenticate_user_logic(email: str, password: str, db: AsyncSession) -> dict:
     user = await get_user_by_email(db, email)
-    if not user or not user.hashed_password:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
+        )
+
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account is linked to Google. Please sign in with Google.",
         )
 
     if not verify_password(password, user.hashed_password):
@@ -180,3 +186,54 @@ async def refresh_token_logic(refresh_token: str | None, db: AsyncSession) -> di
         )
 
     return create_token_pair(str(user.id))
+
+import httpx
+
+async def authenticate_google_user_logic(code: str, db: AsyncSession) -> dict:
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Google OAuth is not configured")
+
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            },
+        )
+        if token_response.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to get Google token: {token_response.text}")
+        
+        access_token = token_response.json().get("access_token")
+
+        userinfo_response = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if userinfo_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to get Google user info")
+        
+        userinfo = userinfo_response.json()
+        email = userinfo.get("email")
+        name = userinfo.get("name")
+        picture = userinfo.get("picture")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Google account has no email")
+
+        user = await get_user_by_email(db, email)
+        if not user:
+            from app.models.user import User, UserData
+            user = User(email=email)
+            user.user_data = UserData(full_name=name or "", avatar_url=picture)
+            user.is_verified = True
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+        else:
+            pass
+
+        return create_token_pair(str(user.id))

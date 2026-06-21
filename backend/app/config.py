@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     LOCAL_AI_BASE_URL: str = "http://localhost:11434/v1"
     LOCAL_AI_API_KEY: str = "ollama"
     RESEND_API_KEY: str = ""
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
 
 @lru_cache
 def get_settings() -> Settings:

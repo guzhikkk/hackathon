@@ -13,7 +13,8 @@ from app.services.auth import (
     verify_verification_token,
     register_user_logic,
     authenticate_user_logic,
-    refresh_token_logic
+    refresh_token_logic,
+    authenticate_google_user_logic
 )
 from app.services.user import get_user_by_id
 from pydantic import BaseModel
@@ -130,3 +131,33 @@ async def verify_email(
     await db.commit()
     
     return {"message": "Email successfully verified"}
+
+from fastapi.responses import RedirectResponse
+
+@router.get("/google/login")
+async def google_login():
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Google OAuth not configured")
+    
+    scope = "openid email profile"
+    url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={settings.GOOGLE_CLIENT_ID}&"
+        f"response_type=code&"
+        f"redirect_uri={settings.GOOGLE_REDIRECT_URI}&"
+        f"scope={scope}&"
+        f"access_type=offline&"
+        f"prompt=consent"
+    )
+    return RedirectResponse(url)
+
+@router.get("/google/callback")
+async def google_callback(
+    code: str,
+    db: Annotated[AsyncSession, Depends(get_db)]
+):
+    tokens = await authenticate_google_user_logic(code, db)
+    # Redirect to frontend (nginx serves it on port 80)
+    response = RedirectResponse(url="http://localhost/?auth=success", status_code=status.HTTP_302_FOUND)
+    set_auth_cookies(response, tokens["access_token"], tokens["refresh_token"])
+    return response
