@@ -8,7 +8,7 @@ from app.dependencies.auth import CurrentUser, AdminUser
 from app.dependencies.database import get_db
 from app.services.s3 import s3_client
 from app.models.file import FileRecord
-from app.models.user import UserData
+from app.models.user import User
 
 router = APIRouter()
 
@@ -114,15 +114,6 @@ async def delete_file(
         )
 
     
-    usage_count = await db.scalar(
-        select(UserData).where(UserData.avatar_url == key)
-    )
-    if usage_count:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete file because it is currently in use as an avatar",
-        )
-
     try:
         await s3_client.delete_file(key)
         await db.delete(file_record)

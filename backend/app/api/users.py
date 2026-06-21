@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies.auth import CurrentUser, AdminUser
 from app.dependencies.database import get_db
 
-from app.schemas.user import UserRead, UserUpdate
+from app.schemas.user import UserRead, UserUpdate, RoleUpdate
 from app.services.user import get_user_by_id, get_users, update_user, delete_user
 
 router = APIRouter()
@@ -18,42 +18,13 @@ async def get_current_user_profile(user: CurrentUser):
     return user
 
 
-from sqlalchemy import select
-from app.models.file import FileRecord
-from app.services.s3 import s3_client
-from app.models.user import UserData
-
 @router.patch("/me", response_model=UserRead)
 async def update_current_user(
     data: UserUpdate,
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    old_avatar = user.user_data.avatar_url if user.user_data else None
-
-    updated = await update_user(db, user, data)
-    
-    
-    update_dict = data.model_dump(exclude_unset=True)
-    if "avatar_url" in update_dict and old_avatar and old_avatar != data.avatar_url:
-        
-        result = await db.execute(select(UserData).where(UserData.avatar_url == old_avatar))
-        users_with_old_avatar = result.scalars().all()
-        
-        if len(users_with_old_avatar) == 0:
-            
-            file_record_result = await db.execute(select(FileRecord).where(FileRecord.key == old_avatar))
-            file_record = file_record_result.scalar_one_or_none()
-            
-            if file_record:
-                try:
-                    await s3_client.delete_file(file_record.key)
-                    await db.delete(file_record)
-                    await db.commit()
-                except Exception as e:
-                    print(f"Failed to GC old avatar {old_avatar}: {e}")
-
-    return updated
+    return await update_user(db, user, data)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
@@ -119,9 +90,6 @@ async def admin_delete_user(
         )
     await delete_user(db, user)
 
-
-class RoleUpdate(BaseModel):
-    is_admin: bool
 
 
 @router.patch("/{user_id}/role", response_model=UserRead)

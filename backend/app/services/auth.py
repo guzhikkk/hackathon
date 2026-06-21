@@ -2,6 +2,13 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 from jose import JWTError, jwt
 from app.config import get_settings
+from fastapi import HTTPException, status, BackgroundTasks
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.schemas.auth import RegisterRequest
+from app.schemas.user import UserCreate
+from app.services.user import create_user, get_user_by_email, get_user_by_id
+from app.services.email import send_email_async
+import uuid
 
 settings = get_settings()
 
@@ -69,3 +76,107 @@ def verify_refresh_token(token: str) -> dict | None:
     if payload and payload.get("type") == "refresh":
         return payload
     return None
+
+def create_verification_token(user_id: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    payload = {
+        "sub": str(user_id),
+        "exp": expire,
+        "type": "verify",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+def verify_verification_token(token: str) -> dict | None:
+    payload = decode_token(token)
+    if payload and payload.get("type") == "verify":
+        return payload
+    return None
+
+
+async def register_user_logic(data: RegisterRequest, db: AsyncSession, background_tasks: BackgroundTasks) -> dict:
+    existing = await get_user_by_email(db, data.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    user = await create_user(
+        db,
+        UserCreate(
+            email=data.email,
+            hashed_password=hash_password(data.password),
+            full_name=data.full_name,
+        ),
+    )
+
+    verify_token = create_verification_token(str(user.id))
+    verify_url = f"http://localhost/?verify={verify_token}"
+    email_body = f"Здравствуйте, {data.full_name}!\n\nПожалуйста, подтвердите вашу электронную почту, перейдя по ссылке:\n{verify_url}\n\nСпасибо!"
+    
+    background_tasks.add_task(
+        send_email_async,
+        to_email=user.email,
+        subject="Verify your email address",
+        body=email_body,
+    )
+
+    return create_token_pair(str(user.id))
+
+async def authenticate_user_logic(email: str, password: str, db: AsyncSession) -> dict:
+    user = await get_user_by_email(db, email)
+    if not user or not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return create_token_pair(str(user.id))
+
+async def refresh_token_logic(refresh_token: str | None, db: AsyncSession) -> dict:
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing in cookies",
+        )
+
+    payload = verify_refresh_token(refresh_token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    user = await get_user_by_id(db, uuid.UUID(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return create_token_pair(str(user.id))

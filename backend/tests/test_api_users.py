@@ -28,6 +28,7 @@ async def test_update_me(client, fake_user):
         ),
         is_active=True,
         is_admin=False,
+        is_verified=True,
         created_at=fake_user.created_at,
         updated_at=datetime(2024, 6, 1),
     )
@@ -52,6 +53,7 @@ async def test_update_me_avatar(client, fake_user):
         ),
         is_active=True,
         is_admin=False,
+        is_verified=True,
         created_at=fake_user.created_at,
         updated_at=datetime(2024, 6, 1),
     )
@@ -134,6 +136,7 @@ async def test_admin_update_user(admin_client, fake_user):
         ),
         is_active=True,
         is_admin=False,
+        is_verified=True,
         created_at=fake_user.created_at,
         updated_at=datetime(2024, 6, 1),
     )

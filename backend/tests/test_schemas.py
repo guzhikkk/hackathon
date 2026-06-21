@@ -61,6 +61,7 @@ class TestUserSchemas:
             ),
             is_active=True,
             is_admin=False,
+            is_verified=True,
             created_at=datetime(2024, 1, 1),
         )
         user = UserRead.model_validate(obj)
@@ -69,15 +70,15 @@ class TestUserSchemas:
 
     def test_user_update_partial(self):
         data = UserUpdate(full_name="New Name")
-        dumped = data.model_dump(exclude_unset=True)
+        dumped = data.model_dump(exclude_unset=True, mode="json")
         assert "full_name" in dumped
         assert "avatar_url" not in dumped  
 
     def test_user_update_empty(self):
         data = UserUpdate()
-        assert data.model_dump(exclude_unset=True) == {}
+        assert data.model_dump(exclude_unset=True, mode="json") == {}
 
     def test_user_update_avatar(self):
         data = UserUpdate(avatar_url="https://example.com/avatar.jpg")
-        dumped = data.model_dump(exclude_unset=True)
+        dumped = data.model_dump(exclude_unset=True, mode="json")
         assert dumped["avatar_url"] == "https://example.com/avatar.jpg"

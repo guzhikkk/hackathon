@@ -25,6 +25,7 @@ def fake_user(fake_user_id):
         ),
         is_active=True,
         is_admin=False,
+        is_verified=True,
         created_at=datetime(2024, 1, 1, 0, 0, 0),
         updated_at=datetime(2024, 1, 1, 0, 0, 0),
     )
@@ -41,6 +42,7 @@ def fake_admin(fake_user_id):
         ),
         is_active=True,
         is_admin=True,
+        is_verified=True,
         created_at=datetime(2024, 1, 1, 0, 0, 0),
         updated_at=datetime(2024, 1, 1, 0, 0, 0),
     )

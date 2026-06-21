@@ -36,6 +36,9 @@ class User(IDMixin, TimestampMixin, Base):
     is_admin: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
     user_data: Mapped["UserData"] = relationship(
         "UserData", back_populates="user", cascade="all, delete-orphan", uselist=False

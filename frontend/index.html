@@ -290,7 +290,29 @@
         let accessToken = localStorage.getItem('accessToken') || null;
 
         // При загрузке страницы проверяем, есть ли токен
-        window.onload = () => {
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const verifyToken = urlParams.get('verify');
+            
+            if (verifyToken) {
+                try {
+                    const res = await fetch(`${API_URL}/auth/verify-email`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: verifyToken })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert('Email verified successfully! You can now login or view your profile.');
+                    } else {
+                        alert('Verification failed: ' + (data.detail || data.message));
+                    }
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } catch (err) {
+                    alert('Error verifying email: ' + err.message);
+                }
+            }
+
             if (accessToken) {
                 setAuthStatus(accessToken);
                 getProfile(); // Пробуем сразу получить профиль, чтобы проверить валидность

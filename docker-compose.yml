@@ -16,6 +16,7 @@ services:
         condition: service_started
     volumes:
       - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
     command: sh -c "alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     restart: unless-stopped
 
@@ -101,3 +102,9 @@ volumes:
   minio_data:
   prometheus_data:
   grafana_data:
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1350

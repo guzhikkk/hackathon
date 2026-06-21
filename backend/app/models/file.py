@@ -7,10 +7,6 @@ from app.models.user import User
 
 
 class FileRecord(IDMixin, TimestampMixin, Base):
-    """
-    Таблица для хранения метаданных загруженных файлов в S3.
-    Позволяет определить владельца файла (owner_id).
-    """
     __tablename__ = "file_records"
 
     key: Mapped[str] = mapped_column(

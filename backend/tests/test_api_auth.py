@@ -8,11 +8,11 @@ from app.services.auth import create_access_token, create_refresh_token, hash_pa
 
 @pytest.mark.asyncio
 async def test_register_success(unauth_client):
-    fake_user = SimpleNamespace(id=uuid.uuid4())
+    fake_user = SimpleNamespace(id=uuid.uuid4(), email="test@example.com")
 
     with (
-        patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=None),
-        patch("app.api.auth.create_user", new_callable=AsyncMock, return_value=fake_user),
+        patch("app.services.auth.get_user_by_email", return_value=None),
+        patch("app.services.auth.create_user", return_value=fake_user, create=True),
     ):
         response = await unauth_client.post(
             "/api/auth/register",
@@ -28,11 +28,11 @@ async def test_register_success(unauth_client):
 
 @pytest.mark.asyncio
 async def test_register_with_name(unauth_client):
-    fake_user = SimpleNamespace(id=uuid.uuid4())
+    fake_user = SimpleNamespace(id=uuid.uuid4(), email="test@example.com")
 
     with (
-        patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=None),
-        patch("app.api.auth.create_user", new_callable=AsyncMock, return_value=fake_user),
+        patch("app.services.auth.get_user_by_email", return_value=None),
+        patch("app.services.auth.create_user", return_value=fake_user, create=True),
     ):
         response = await unauth_client.post(
             "/api/auth/register",
@@ -49,7 +49,7 @@ async def test_register_with_name(unauth_client):
 async def test_register_duplicate_email(unauth_client):
     existing = SimpleNamespace(id=uuid.uuid4(), email="taken@example.com")
 
-    with patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=existing):
+    with patch("app.services.auth.get_user_by_email", return_value=existing):
         response = await unauth_client.post(
             "/api/auth/register",
             json={"email": "taken@example.com", "password": "pass"},
@@ -66,7 +66,7 @@ async def test_login_success(unauth_client):
         is_active=True,
     )
 
-    with patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=fake_user):
+    with patch("app.services.auth.get_user_by_email", return_value=fake_user):
         response = await unauth_client.post(
             "/api/auth/login",
             json={"email": "test@example.com", "password": "password123"},
@@ -80,7 +80,7 @@ async def test_login_success(unauth_client):
 
 @pytest.mark.asyncio
 async def test_login_wrong_email(unauth_client):
-    with patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=None):
+    with patch("app.services.auth.get_user_by_email", return_value=None):
         response = await unauth_client.post(
             "/api/auth/login",
             json={"email": "nobody@example.com", "password": "pass"},
@@ -97,7 +97,7 @@ async def test_login_wrong_password(unauth_client):
         is_active=True,
     )
 
-    with patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=fake_user):
+    with patch("app.services.auth.get_user_by_email", return_value=fake_user):
         response = await unauth_client.post(
             "/api/auth/login",
             json={"email": "test@example.com", "password": "wrong_password"},
@@ -114,7 +114,7 @@ async def test_login_inactive_user(unauth_client):
         is_active=False,
     )
 
-    with patch("app.api.auth.get_user_by_email", new_callable=AsyncMock, return_value=fake_user):
+    with patch("app.services.auth.get_user_by_email", return_value=fake_user):
         response = await unauth_client.post(
             "/api/auth/login",
             json={"email": "test@example.com", "password": "password123"},
@@ -132,7 +132,7 @@ async def test_refresh_success(unauth_client):
         is_active=True,
     )
 
-    with patch("app.api.auth.get_user_by_id", new_callable=AsyncMock, return_value=fake_user):
+    with patch("app.services.auth.get_user_by_id", return_value=fake_user):
         response = await unauth_client.post(
             "/api/auth/refresh",
             cookies={"refresh_token": refresh},
